@@ -8,14 +8,19 @@ import {
 } from "@remix-run/react";
 import invariant from "tiny-invariant";
 
-import { deleteNote, getNote } from "~/models/note.server";
+import { deleteLog, getLog } from "~/models/log.server";
 import { requireUserId } from "~/session.server";
 
 export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
-  invariant(params.noteId, "noteId not found");
+  invariant(params.logId, "logId not found");
+  invariant(params.vehicleId, "vehicleId not found");
 
-  const note = await getNote({ id: params.noteId, userId });
+  const note = await getLog({
+    id: params.logId,
+    vehicleId: params.vehicleId,
+    userId,
+  });
   if (!note) {
     throw new Response("Not Found", { status: 404 });
   }
@@ -24,11 +29,12 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
 
 export const action = async ({ params, request }: ActionFunctionArgs) => {
   const userId = await requireUserId(request);
-  invariant(params.noteId, "noteId not found");
+  invariant(params.logId, "logId not found");
+  invariant(params.vehicleId, "vehicleId not found");
 
-  await deleteNote({ id: params.noteId, userId });
+  await deleteLog({ id: params.logId, userId, vehicleId: params.vehicleId });
 
-  return redirect("/notes");
+  return redirect(`/vehicles/${params.vehicleId}/logs`);
 };
 
 export default function NoteDetailsPage() {

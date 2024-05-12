@@ -1,5 +1,5 @@
 {
-  "name": "vehicle-maintenance-log-337f",
+  "name": "vehicle-work-log",
   "private": true,
   "sideEffects": false,
   "scripts": {
@@ -31,7 +31,7 @@
   ],
   "dependencies": {
     "@isaacs/express-prometheus-middleware": "^1.2.1",
-    "@prisma/client": "^4.16.2",
+    "@prisma/client": "^5.13.0",
     "@remix-run/css-bundle": "^2.9.1",
     "@remix-run/express": "^2.9.1",
     "@remix-run/node": "^2.9.1",
@@ -91,7 +91,7 @@
     "postcss": "^8.4.38",
     "prettier": "3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.13",
-    "prisma": "^4.16.2",
+    "prisma": "^5.13.0",
     "start-server-and-test": "^2.0.3",
     "tailwindcss": "^3.4.2",
     "ts-node": "^10.9.2",

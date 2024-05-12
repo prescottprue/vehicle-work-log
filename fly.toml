@@ -1,4 +1,4 @@
-app = "vehicle-maintenance-log-337f"
+app = "vehicle-work-log-337f"
 kill_signal = "SIGINT"
 kill_timeout = 5
 processes = [ ]

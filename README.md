@@ -1,12 +1,6 @@
-# Remix Blues Stack
+# Vehicle Work Log
 
-![The Remix Blues Stack](https://repository-images.githubusercontent.com/461012689/37d5bd8b-fa9c-4ab0-893c-f0a199d5012d)
-
-Learn more about [Remix Stacks](https://remix.run/stacks).
-
-```
-npx create-remix@latest --template remix-run/blues-stack
-```
+Application for tracking work + maintenance on vehicles
 
 ## What's in the stack
 
@@ -25,12 +19,6 @@ npx create-remix@latest --template remix-run/blues-stack
 - Static Types with [TypeScript](https://typescriptlang.org)
 
 Not a fan of bits of the stack? Fork it, change it, and use `npx create-remix --template your/repo`! Make it your own.
-
-## Quickstart
-
-Click this button to create a [Gitpod](https://gitpod.io) workspace with the project set up, Postgres started, and Fly pre-installed
-
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/remix-run/blues-stack/tree/main)
 
 ## Development
 
@@ -69,14 +57,6 @@ The database seed script creates a new user with some data you can use to get st
 
 If you'd prefer not to use Docker, you can also use Fly's Wireguard VPN to connect to a development database (or even your production database). You can find the instructions to set up Wireguard [here](https://fly.io/docs/reference/private-networking/#install-your-wireguard-app), and the instructions for creating a development database [here](https://fly.io/docs/reference/postgres/).
 
-### Relevant code:
-
-This is a pretty simple note-taking app, but it's a good example of how you can build a full stack app with Prisma and Remix. The main functionality is creating users, logging in and out, and creating and deleting notes.
-
-- creating users, and logging in and out [./app/models/user.server.ts](./app/models/user.server.ts)
-- user sessions, and verifying them [./app/session.server.ts](./app/session.server.ts)
-- creating, and deleting notes [./app/models/note.server.ts](./app/models/note.server.ts)
-
 ## Deployment
 
 This Remix Stack comes with two GitHub Actions that handle automatically deploying your app to production and staging environments.
@@ -96,8 +76,8 @@ Prior to your first deployment, you'll need to do a few things:
 - Create two apps on Fly, one for staging and one for production:
 
   ```sh
-  fly apps create vehicle-maintenance-log-337f
-  fly apps create vehicle-maintenance-log-337f-staging
+  fly apps create vehicle-work-log-337f
+  fly apps create vehicle-work-log-337f-staging
   ```
 
   > **Note:** Once you've successfully created an app, double-check the `fly.toml` file to ensure that the `app` key is the name of the production app you created. This Stack [automatically appends a unique suffix at init](https://github.com/remix-run/blues-stack/blob/4c2f1af416b539187beb8126dd16f6bc38f47639/remix.init/index.js#L29) which may not match the apps you created on Fly. You will likely see [404 errors in your Github Actions CI logs](https://community.fly.io/t/404-failure-with-deployment-with-remix-blues-stack/4526/3) if you have this mismatch.
@@ -119,14 +99,14 @@ Prior to your first deployment, you'll need to do a few things:
 - Add a `SESSION_SECRET` to your fly app secrets, to do this you can run the following commands:
 
   ```sh
-  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) --app vehicle-maintenance-log-337f
-  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) --app vehicle-maintenance-log-337f-staging
+  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) --app vehicle-work-log-337f
+  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) --app vehicle-work-log-337f-staging
   ```
 
   > **Note:** When creating the staging secret, you may get a warning from the Fly CLI that looks like this:
   >
   > ```
-  > WARN app flag 'vehicle-maintenance-log-337f-staging' does not match app name in config file 'vehicle-maintenance-log-337f'
+  > WARN app flag 'vehicle-work-log-337f-staging' does not match app name in config file 'vehicle-work-log-337f'
   > ```
   >
   > This simply means that the current directory contains a config that references the production app we created in the first step. Ignore this warning and proceed to create the secret.
@@ -136,11 +116,11 @@ Prior to your first deployment, you'll need to do a few things:
 - Create a database for both your staging and production environments. Run the following:
 
   ```sh
-  fly postgres create --name vehicle-maintenance-log-337f-db
-  fly postgres attach --app vehicle-maintenance-log-337f vehicle-maintenance-log-337f-db
+  fly postgres create --name vehicle-work-log-337f-db
+  fly postgres attach --app vehicle-work-log-337f vehicle-work-log-337f-db
 
-  fly postgres create --name vehicle-maintenance-log-337f-staging-db
-  fly postgres attach --app vehicle-maintenance-log-337f-staging vehicle-maintenance-log-337f-staging-db
+  fly postgres create --name vehicle-work-log-337f-staging-db
+  fly postgres attach --app vehicle-work-log-337f-staging vehicle-work-log-337f-staging-db
   ```
 
   > **Note:** You'll get the same warning for the same reason when attaching the staging database that you did in the `fly set secret` step above. No worries. Proceed!
