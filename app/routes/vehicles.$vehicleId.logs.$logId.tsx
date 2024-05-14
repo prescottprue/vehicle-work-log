@@ -16,15 +16,15 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   invariant(params.logId, "logId not found");
   invariant(params.vehicleId, "vehicleId not found");
 
-  const note = await getLog({
+  const log = await getLog({
     id: params.logId,
     vehicleId: params.vehicleId,
     userId,
   });
-  if (!note) {
+  if (!log) {
     throw new Response("Not Found", { status: 404 });
   }
-  return json({ note });
+  return json({ log });
 };
 
 export const action = async ({ params, request }: ActionFunctionArgs) => {
@@ -38,12 +38,16 @@ export const action = async ({ params, request }: ActionFunctionArgs) => {
 };
 
 export default function NoteDetailsPage() {
-  const data = useLoaderData<typeof loader>();
+  const { log } = useLoaderData<typeof loader>();
 
   return (
     <div>
-      <h3 className="text-2xl font-bold">{data.note.title}</h3>
-      <p className="py-6">{data.note.body}</p>
+      <h3 className="text-2xl font-bold">{log.title}</h3>
+      <p className="py-4">{log.body}</p>
+      <p className="py-4">Service Date: {log.createdAt}</p>
+      <p className="py-4">Type: {log.type}</p>
+      <p className="py-4">Odometer: {log.odometer}</p>
+      <p className="py-4">Cost: {log.cost}</p>
       <hr className="my-4" />
       <Form method="post">
         <button
