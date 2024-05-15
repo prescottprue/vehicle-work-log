@@ -1,19 +1,51 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
+import { json, redirect, unstable_createMemoryUploadHandler, unstable_parseMultipartFormData } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
 import { useEffect, useRef } from "react";
 
 import { createVehicle } from "~/models/vehicle.server";
 import { requireUserId } from "~/session.server";
+import { uploadFile } from "~/storage.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const userId = await requireUserId(request);
 
-  const formData = await request.formData();
+  const uploadHandler = unstable_createMemoryUploadHandler({
+    maxPartSize: 500_000,
+  });
+  const formData = await unstable_parseMultipartFormData(
+    request,
+    uploadHandler
+  );
+  // const formData = await request.formData();
   const name = formData.get("name");
   const model = formData.get("model");
   const make = formData.get("make");
   const year = formData.get("year");
+
+  const file = formData.get("avatar");
+  let avatarPath
+  if (file) {
+    const fileObj = file as File
+    console.log('file', fileObj)
+    avatarPath = `vehicle-avatars/${userId}/${Date.now()}`
+    try {
+      const fileBuffer = await fileObj.arrayBuffer()
+      await uploadFile(
+        avatarPath,
+        Buffer.from(fileBuffer),
+        fileObj.size,
+        {
+          'Content-Type': fileObj.type,
+        }
+      )
+      console.log('file string uploaded')
+    } catch(err) {
+      console.log("Error uploading file", { err })
+      throw err
+    }
+  }
+  
 
   const defaultErrors = { name: null, model: null, make: null, year: null };
   if (typeof name !== "string" && typeof name !== "undefined") {
@@ -44,7 +76,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 
-  const vehicle = await createVehicle({ name, make, model, year, userId });
+  const vehicle = await createVehicle({ name, make, model, year, userId, avatarPath });
 
   return redirect(`/vehicles/${vehicle.id}`);
 };
@@ -69,6 +101,7 @@ export default function NewVehiclePage() {
   return (
     <Form
       method="post"
+      encType="multipart/form-data"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -76,6 +109,9 @@ export default function NewVehiclePage() {
         width: "100%",
       }}
     >
+            <label htmlFor="avatar">Choose a profile picture:</label>
+
+<input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg" />
       <div>
         <label className="flex w-full flex-col gap-1">
           <span>Name: </span>

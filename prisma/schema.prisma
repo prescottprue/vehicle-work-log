@@ -75,6 +75,8 @@ model Vehicle {
   model  String
   year  String
 
+  avatarPath String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

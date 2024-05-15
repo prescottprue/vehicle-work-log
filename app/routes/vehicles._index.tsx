@@ -3,10 +3,18 @@ import { Link, NavLink, useLoaderData } from "@remix-run/react";
 
 import { getVehicleListItems } from "~/models/vehicle.server";
 import { requireUserId } from "~/session.server";
+import { getFileUrl } from "~/storage.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
-  const vehicleListItems = await getVehicleListItems({ userId });
+  const vehicles = await getVehicleListItems({ userId });
+  const vehicleListItems = await Promise.all(vehicles.map(async (vehicle) => {
+    if (!vehicle.avatarPath) {
+      return { ...vehicle, avatarUrl: '' }
+    }
+    const avatarUrl = await getFileUrl(vehicle.avatarPath)
+    return { ...vehicle, avatarUrl }
+  }))
   return json({ vehicleListItems });
 };
 
@@ -25,6 +33,7 @@ export default function VehiclesPage() {
             <ol>
               {data.vehicleListItems.map((vehicle) => (
                 <li key={vehicle.id}>
+                  {vehicle.avatarUrl ? <img src={vehicle.avatarUrl} /> : null}
                   <NavLink
                     className={({ isActive }) =>
                       `block border-b p-4 text-xl ${isActive ? "bg-white" : ""}`

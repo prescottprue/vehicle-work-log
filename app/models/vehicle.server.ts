@@ -28,7 +28,8 @@ export function createVehicle({
   model,
   year,
   userId,
-}: Pick<Vehicle, "name" | "make" | "model" | "year"> & {
+  avatarPath
+}: Pick<Vehicle, "name" | "make" | "model" | "year" | "avatarPath"> & {
   userId: User["id"];
 }) {
   return prisma.vehicle.create({
@@ -37,6 +38,7 @@ export function createVehicle({
       make,
       model,
       year,
+      avatarPath,
       user: {
         connect: {
           id: userId,
