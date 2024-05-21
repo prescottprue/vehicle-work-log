@@ -11,6 +11,7 @@ import invariant from "tiny-invariant";
 
 import { deleteVehicle, getVehicle } from "~/models/vehicle.server";
 import { requireUserId } from "~/session.server";
+import { getFileUrl } from "~/storage.server";
 
 export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
@@ -20,7 +21,15 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   if (!vehicle) {
     throw new Response("Not Found", { status: 404 });
   }
-  return json({ vehicle });
+
+  return json({
+    vehicle: {
+      ...vehicle,
+      avatarUrl: vehicle.avatarPath
+        ? await getFileUrl(vehicle.avatarPath)
+        : `https://placehold.co/701x738?text=${vehicle.name?.replace(" ", "+") || vehicle.model}`,
+    },
+  });
 };
 
 export const action = async ({ params, request }: ActionFunctionArgs) => {
@@ -35,10 +44,11 @@ export const action = async ({ params, request }: ActionFunctionArgs) => {
 export default function VehicleDetailPage() {
   const data = useLoaderData<typeof loader>();
   return (
-    <div className="flex w-full flex-col gap-1">
+    <div className="flex w-full flex-col gap-1 max-w-md mx-auto flex flex-col">
       <h3 className="text-2xl font-bold">
         {data.vehicle.name || `${data.vehicle.make} ${data.vehicle.model}`}
       </h3>
+      <img src={data.vehicle.avatarUrl} alt="Vehicle Avatar" />
       <p className="py-6">Make: {data.vehicle.make}</p>
       <p className="py-6">Model: {data.vehicle.model}</p>
       <p className="py-6">Year: {data.vehicle.year}</p>
