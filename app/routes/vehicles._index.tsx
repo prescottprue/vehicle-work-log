@@ -8,13 +8,18 @@ import { getFileUrl } from "~/storage.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
   const vehicles = await getVehicleListItems({ userId });
-  const vehicleListItems = await Promise.all(vehicles.map(async (vehicle) => {
-    if (!vehicle.avatarPath) {
-      return { ...vehicle, avatarUrl: '' }
-    }
-    const avatarUrl = await getFileUrl(vehicle.avatarPath)
-    return { ...vehicle, avatarUrl }
-  }))
+  const vehicleListItems = await Promise.all(
+    vehicles.map(async (vehicle) => {
+      if (!vehicle.avatarPath) {
+        return {
+          ...vehicle,
+          avatarUrl: `https://placehold.co/701x738?text=${vehicle.name?.replace(" ", "+") || vehicle.model}`,
+        };
+      }
+      const avatarUrl = await getFileUrl(vehicle.avatarPath);
+      return { ...vehicle, avatarUrl };
+    }),
+  );
   return json({ vehicleListItems });
 };
 
@@ -22,34 +27,51 @@ export default function VehiclesPage() {
   const data = useLoaderData<typeof loader>();
   return (
     <main className="flex h-full w-full flex-col gap-1 bg-white">
-        <header className="m-6">
-      <h1 className="text-3xl font-bold">Vehicles</h1>
+      <header className="m-6">
+        <h1 className="text-3xl font-bold">Vehicles</h1>
       </header>
-      <section className="relative min-h-screen bg-white flex w-full items-center justify-center flex flex-col">
-        <div className="relative flex w-full justify-center flex flex-col text-gray-700 bg-white shadow-md w-96 rounded-xl bg-clip-border">
+      <section className="relative min-h-screen w-full">
+        <div className="absolute top-0 right-0">
+          <Link to="new">
+            <button className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400 my-6">
+              Create A New Vehicle
+            </button>
+          </Link>
+        </div>
+        <div className="static flex w-full justify-center">
           {data.vehicleListItems.length === 0 ? (
             <p className="p-4">No vehicles yet</p>
           ) : (
-            <ol>
+            <ul className="flex flex-row justify-center space-x-6">
               {data.vehicleListItems.map((vehicle) => (
-                <li key={vehicle.id}>
-                  {vehicle.avatarUrl ? <img src={vehicle.avatarUrl} /> : null}
-                  <NavLink
-                    className={({ isActive }) =>
-                      `block border-b p-4 text-xl ${isActive ? "bg-white" : ""}`
-                    }
-                    to={vehicle.id}
-                  >
-                    {vehicle.name || `${vehicle.make} ${vehicle.model}`}
-                  </NavLink>
+                <li
+                  key={vehicle.id}
+                  className="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 min-w-24"
+                >
+                  <img
+                    className="rounded-t-lg"
+                    src={vehicle.avatarUrl}
+                    alt=""
+                  />
+                  <div className="p-5">
+                    <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                      {vehicle.name || `${vehicle.make} ${vehicle.model}`}
+                    </h5>
+                    <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">{`${vehicle.year} ${vehicle.make} ${vehicle.model}`}</p>
+                    <NavLink to={vehicle.id}>
+                      <button
+                        type="submit"
+                        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
+                      >
+                        Edit
+                      </button>
+                    </NavLink>
+                  </div>
                 </li>
               ))}
-            </ol>
+            </ul>
           )}
         </div>
-        <Link to="new">
-          <button className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400 my-6">Create A New Vehicle</button>
-        </Link>
       </section>
     </main>
   );

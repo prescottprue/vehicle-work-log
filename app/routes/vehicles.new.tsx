@@ -1,7 +1,12 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
-import { json, redirect, unstable_createMemoryUploadHandler, unstable_parseMultipartFormData } from "@remix-run/node";
+import {
+  json,
+  redirect,
+  unstable_createMemoryUploadHandler,
+  unstable_parseMultipartFormData,
+} from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { createVehicle } from "~/models/vehicle.server";
 import { requireUserId } from "~/session.server";
@@ -15,7 +20,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   });
   const formData = await unstable_parseMultipartFormData(
     request,
-    uploadHandler
+    uploadHandler,
   );
   // const formData = await request.formData();
   const name = formData.get("name");
@@ -24,28 +29,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const year = formData.get("year");
 
   const file = formData.get("avatar");
-  let avatarPath
+  let avatarPath;
   if (file) {
-    const fileObj = file as File
-    console.log('file', fileObj)
-    avatarPath = `vehicle-avatars/${userId}/${Date.now()}`
+    const fileObj = file as File;
+    console.log("file", fileObj);
+    avatarPath = `vehicle-avatars/${userId}/${Date.now()}`;
     try {
-      const fileBuffer = await fileObj.arrayBuffer()
-      await uploadFile(
-        avatarPath,
-        Buffer.from(fileBuffer),
-        fileObj.size,
-        {
-          'Content-Type': fileObj.type,
-        }
-      )
-      console.log('file string uploaded')
-    } catch(err) {
-      console.log("Error uploading file", { err })
-      throw err
+      const fileBuffer = await fileObj.arrayBuffer();
+      await uploadFile(avatarPath, Buffer.from(fileBuffer), fileObj.size, {
+        "Content-Type": fileObj.type,
+      });
+      console.log("file string uploaded");
+    } catch (err) {
+      console.log("Error uploading file", { err });
+      throw err;
     }
   }
-  
 
   const defaultErrors = { name: null, model: null, make: null, year: null };
   if (typeof name !== "string" && typeof name !== "undefined") {
@@ -76,7 +75,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 
-  const vehicle = await createVehicle({ name, make, model, year, userId, avatarPath });
+  const vehicle = await createVehicle({
+    name,
+    make,
+    model,
+    year,
+    userId,
+    avatarPath,
+  });
 
   return redirect(`/vehicles/${vehicle.id}`);
 };
@@ -87,6 +93,8 @@ export default function NewVehiclePage() {
   const makeRef = useRef<HTMLInputElement>(null);
   const modelRef = useRef<HTMLInputElement>(null);
   const yearRef = useRef<HTMLInputElement>(null);
+
+  const [avatarPreview, setAvatarUrl] = useState("");
 
   useEffect(() => {
     if (actionData?.errors?.make) {
@@ -102,16 +110,27 @@ export default function NewVehiclePage() {
     <Form
       method="post"
       encType="multipart/form-data"
+      className="max-w-md mx-auto flex flex-col"
       style={{
-        display: "flex",
-        flexDirection: "column",
         gap: 8,
-        width: "100%",
       }}
     >
-            <label htmlFor="avatar">Choose a profile picture:</label>
+      <label htmlFor="avatar">Choose a vehicle avatar:</label>
+      {avatarPreview ? <img src={avatarPreview} alt="Preview Avatar" /> : null}
 
-<input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg" />
+      <input
+        type="file"
+        id="avatar"
+        name="avatar"
+        accept="image/png, image/jpeg"
+        onChange={(e) => {
+          console.log("e", e);
+          if (e.target.files) {
+            setAvatarUrl(URL.createObjectURL(e.target.files[0]));
+          }
+        }}
+      />
+
       <div>
         <label className="flex w-full flex-col gap-1">
           <span>Name: </span>
@@ -128,6 +147,26 @@ export default function NewVehiclePage() {
         {actionData?.errors?.name ? (
           <div className="pt-1 text-red-700" id="name-error">
             {actionData.errors.name}
+          </div>
+        ) : null}
+      </div>
+
+      <div>
+        <label className="flex w-full flex-col gap-1">
+          <span>Year: </span>
+          <input
+            ref={yearRef}
+            name="year"
+            className="w-full flex-1 rounded-md border-2 border-blue-500 px-3 py-2 text-lg leading-6"
+            aria-invalid={actionData?.errors?.year ? true : undefined}
+            aria-errormessage={
+              actionData?.errors?.year ? "year-error" : undefined
+            }
+          />
+        </label>
+        {actionData?.errors?.year ? (
+          <div className="pt-1 text-red-700" id="year-error">
+            {actionData.errors.year}
           </div>
         ) : null}
       </div>
@@ -168,26 +207,6 @@ export default function NewVehiclePage() {
         {actionData?.errors?.model ? (
           <div className="pt-1 text-red-700" id="model-error">
             {actionData.errors.model}
-          </div>
-        ) : null}
-      </div>
-
-      <div>
-        <label className="flex w-full flex-col gap-1">
-          <span>Year: </span>
-          <input
-            ref={yearRef}
-            name="year"
-            className="w-full flex-1 rounded-md border-2 border-blue-500 px-3 py-2 text-lg leading-6"
-            aria-invalid={actionData?.errors?.year ? true : undefined}
-            aria-errormessage={
-              actionData?.errors?.year ? "year-error" : undefined
-            }
-          />
-        </label>
-        {actionData?.errors?.year ? (
-          <div className="pt-1 text-red-700" id="year-error">
-            {actionData.errors.year}
           </div>
         ) : null}
       </div>
