@@ -68,8 +68,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     );
   }
 
-  console.log({ servicedAt, selfService });
-
   if (typeof servicedAt !== "string" || servicedAt === null) {
     return json(
       {
@@ -136,6 +134,14 @@ export default function NewNotePage() {
         width: "100%",
       }}
     >
+      <div className="text-right">
+        <button
+          type="submit"
+          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
+        >
+          Save
+        </button>
+      </div>
       <div>
         <label className="flex w-full flex-col gap-1">
           <span>Title: </span>
@@ -280,15 +286,8 @@ export default function NewNotePage() {
           </div>
         ) : null}
       </div>
+      <h3>Parts</h3>
 
-      <div className="text-right">
-        <button
-          type="submit"
-          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
-        >
-          Save
-        </button>
-      </div>
     </Form>
   );
 }

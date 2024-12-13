@@ -15,7 +15,7 @@ import {
 import { getUser } from "~/session.server";
 import stylesheet from "~/tailwind.css";
 
-import { useUser } from "./utils";
+import { useOptionalUser, useUser } from "./utils";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -27,7 +27,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function App() {
-  const user = useUser();
+  const user = useOptionalUser();
 
   return (
     <html lang="en" className="h-full">
@@ -42,7 +42,7 @@ export default function App() {
           <h1 className="text-3xl font-bold">
             <Link to=".">Vehicle Work Log</Link>
           </h1>
-          <p>{user.email}</p>
+          <p>{user?.email}</p>
           <Form action="/logout" method="post">
             <button
               type="submit"

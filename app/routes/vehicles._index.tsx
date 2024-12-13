@@ -1,6 +1,7 @@
 import { LoaderFunctionArgs, json } from "@remix-run/node";
 import { Link, NavLink, useLoaderData } from "@remix-run/react";
 
+import { Breadcrumb, Breadcrumbs } from "~/components/Breadcrumbs";
 import { getVehicleListItems } from "~/models/vehicle.server";
 import { requireUserId } from "~/session.server";
 import { getFileUrl } from "~/storage.server";
@@ -27,18 +28,18 @@ export default function VehiclesPage() {
   const data = useLoaderData<typeof loader>();
   return (
     <main className="flex h-full w-full flex-col gap-1 bg-white">
-      <header className="m-6">
-        <h1 className="text-3xl font-bold">Vehicles</h1>
-      </header>
+      <Breadcrumbs>
+        <Breadcrumb to="/vehicles" label="Vehicles" lastChild />
+      </Breadcrumbs>
       <section className="relative min-h-screen w-full">
-        <div className="absolute top-0 right-0">
+        <div className="flex justify-end mr-10">
           <Link to="new">
             <button className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400 my-6">
               Create A New Vehicle
             </button>
           </Link>
         </div>
-        <div className="static flex w-full justify-center">
+        <div className="static flex w-full justify-center mt-6">
           {data.vehicleListItems.length === 0 ? (
             <p className="p-4">No vehicles yet</p>
           ) : (

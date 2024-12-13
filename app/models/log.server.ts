@@ -1,4 +1,4 @@
-import type { User, Log, Vehicle, Mechanic } from "@prisma/client";
+import type { User, Log, Vehicle, Mechanic, Part, Tag, Prisma } from "@prisma/client";
 
 import { prisma } from "~/db.server";
 
@@ -30,7 +30,7 @@ export function getLogListItems({
   });
 }
 
-export function createLog({
+export async function createLog({
   title,
   body,
   type,
@@ -41,6 +41,8 @@ export function createLog({
   userId,
   vehicleId,
   mechanicId,
+  parts,
+  tags,
 }: Pick<
   Log,
   "title" | "body" | "type" | "cost" | "odometer" | "servicedAt" | "selfService"
@@ -48,9 +50,12 @@ export function createLog({
   userId: User["id"];
   vehicleId: Vehicle["id"];
   mechanicId?: Mechanic["id"];
+  tags?: Tag[],
+  parts?: Part[],
 }) {
-  // TODO: Add tags
-  return prisma.log.create({
+  const newTags = tags?.filter(tag => !tag.id)
+  const newParts = parts?.filter(part => !part.id)
+  const newLog = await prisma.log.create({
     data: {
       title,
       body,
@@ -76,8 +81,26 @@ export function createLog({
           id: vehicleId,
         },
       },
+      parts: newParts?.length ? { create: newParts } : undefined,
+      tags: newTags?.length ? { create: newTags } : undefined
     },
   });
+
+  // Update new log with tags/parts which already exist
+  const existingTags = tags?.filter(tag => tag.id)
+  const existingParts = parts?.filter(part => part.id)
+  if (existingTags?.length || existingParts?.length) {
+    await prisma.log.update({
+      where: {
+        id: newLog.id
+      },
+      data: {
+        tags: existingTags?.length ? { set: existingTags.map((tag) => ({ id: tag.id })) } : undefined,
+        parts: existingParts?.length ? { set: existingParts.map((tag) => ({ id: tag.id })) } : undefined,
+      }
+    })
+  }
+  return newLog
 }
 
 export function deleteLog({

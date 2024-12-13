@@ -5,9 +5,10 @@ import {
   unstable_createMemoryUploadHandler,
   unstable_parseMultipartFormData,
 } from "@remix-run/node";
-import { Form, useActionData } from "@remix-run/react";
+import { Form, NavLink, useActionData } from "@remix-run/react";
 import { useEffect, useRef, useState } from "react";
 
+import { Breadcrumb, Breadcrumbs } from "~/components/Breadcrumbs";
 import { createVehicle } from "~/models/vehicle.server";
 import { requireUserId } from "~/session.server";
 import { uploadFile } from "~/storage.server";
@@ -107,6 +108,12 @@ export default function NewVehiclePage() {
   }, [actionData]);
 
   return (
+    <div>
+    <Breadcrumbs>
+      <Breadcrumb to="/vehicles" label="Vehicles" />
+      <Breadcrumb to="/vehicles/new" label="New Vehicle" lastChild/>
+    </Breadcrumbs>
+
     <Form
       method="post"
       encType="multipart/form-data"
@@ -220,5 +227,6 @@ export default function NewVehiclePage() {
         </button>
       </div>
     </Form>
+    </div>
   );
 }

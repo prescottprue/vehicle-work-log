@@ -73,7 +73,8 @@ model Vehicle {
   name String?
   make  String
   model  String
-  year  String
+  trim String?
+  year  Int
 
   avatarPath String?
 
