@@ -14,7 +14,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   const formData = await request.formData();
   const title = formData.get("title");
-  const body = formData.get("body");
+  const notes = formData.get("notes");
   const type = formData.get("type");
   const costInput = formData.get("cost");
   const cost = Number(costInput);
@@ -26,7 +26,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   const defaultErrors = {
     title: null,
-    body: null,
+    notes: null,
     type: null,
     cost: null,
     odometer: null,
@@ -40,9 +40,9 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     );
   }
 
-  if (typeof body !== "string" || body.length === 0) {
+  if (typeof notes !== "string" && notes !== null) {
     return json(
-      { errors: { ...defaultErrors, body: "Body is required" } },
+      { errors: { ...defaultErrors, notes: "Title is required" } },
       { status: 400 },
     );
   }
@@ -68,8 +68,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     );
   }
 
-  console.log({ servicedAt, selfService });
-
   if (typeof servicedAt !== "string" || servicedAt === null) {
     return json(
       {
@@ -94,7 +92,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   // TODO: Add mechanic and tags
 
   const log = await createLog({
-    body,
+    notes,
     title,
     type,
     cost,
@@ -111,7 +109,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 export default function NewNotePage() {
   const actionData = useActionData<typeof action>();
   const titleRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
   const typeRef = useRef<HTMLInputElement>(null);
   const costRef = useRef<HTMLInputElement>(null);
   const odometerRef = useRef<HTMLInputElement>(null);
@@ -121,8 +119,8 @@ export default function NewNotePage() {
   useEffect(() => {
     if (actionData?.errors?.title) {
       titleRef.current?.focus();
-    } else if (actionData?.errors?.body) {
-      bodyRef.current?.focus();
+    } else if (actionData?.errors?.notes) {
+      notesRef.current?.focus();
     }
   }, [actionData]);
 
@@ -136,6 +134,14 @@ export default function NewNotePage() {
         width: "100%",
       }}
     >
+      <div className="text-right">
+        <button
+          type="submit"
+          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
+        >
+          Save
+        </button>
+      </div>
       <div>
         <label className="flex w-full flex-col gap-1">
           <span>Title: </span>
@@ -158,21 +164,21 @@ export default function NewNotePage() {
 
       <div className="flex w-full flex-col">
         <label className="flex w-full flex-col gap-1">
-          <span>Body: </span>
+          <span>Notes: </span>
           <textarea
-            ref={bodyRef}
-            name="body"
+            ref={notesRef}
+            name="notes"
             rows={8}
             className="w-full flex-1 rounded-md border-2 border-blue-500 px-3 py-2 text-lg leading-6"
-            aria-invalid={actionData?.errors?.body ? true : undefined}
+            aria-invalid={actionData?.errors?.notes ? true : undefined}
             aria-errormessage={
-              actionData?.errors?.body ? "body-error" : undefined
+              actionData?.errors?.notes ? "notes-error" : undefined
             }
           />
         </label>
-        {actionData?.errors?.body ? (
-          <div className="pt-1 text-red-700" id="body-error">
-            {actionData.errors.body}
+        {actionData?.errors?.notes ? (
+          <div className="pt-1 text-red-700" id="notes-error">
+            {actionData.errors.notes}
           </div>
         ) : null}
       </div>
@@ -280,15 +286,8 @@ export default function NewNotePage() {
           </div>
         ) : null}
       </div>
+      <h3>Parts</h3>
 
-      <div className="text-right">
-        <button
-          type="submit"
-          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
-        >
-          Save
-        </button>
-      </div>
     </Form>
   );
 }
