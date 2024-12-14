@@ -42,8 +42,8 @@ model Mechanic {
 model Log {
   id    String @id @default(cuid())
   title String
-  body  String?
-  type String // Minor, Major, Modify, Check
+  notes  String?
+  type String? // Minor, Major, Modify, Check
 
   cost Float?
   odometer Float?
@@ -98,7 +98,7 @@ model Part {
   name  String
   manufacturer String
   price Float
-  link String
-  note String
+  link String?
+  note String?
   logs Log[]
 }
