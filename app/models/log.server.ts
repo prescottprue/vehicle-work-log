@@ -32,7 +32,7 @@ export function getLogListItems({
 
 export async function createLog({
   title,
-  body,
+  notes,
   type,
   cost,
   odometer,
@@ -45,7 +45,7 @@ export async function createLog({
   tags,
 }: Pick<
   Log,
-  "title" | "body" | "type" | "cost" | "odometer" | "servicedAt" | "selfService"
+  "title" | "notes" | "type" | "cost" | "odometer" | "servicedAt" | "selfService"
 > & {
   userId: User["id"];
   vehicleId: Vehicle["id"];
@@ -58,7 +58,7 @@ export async function createLog({
   const newLog = await prisma.log.create({
     data: {
       title,
-      body,
+      notes,
       type,
       cost,
       odometer,

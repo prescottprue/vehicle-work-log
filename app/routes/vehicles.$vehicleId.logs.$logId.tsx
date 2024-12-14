@@ -43,7 +43,7 @@ export default function NoteDetailsPage() {
   return (
     <div>
       <h3 className="text-2xl font-bold">{log.title}</h3>
-      <p className="py-4">{log.body}</p>
+      <p className="py-4">{log.notes}</p>
       <p className="py-4">Service Date: {log.createdAt}</p>
       <p className="py-4">Type: {log.type}</p>
       <p className="py-4">Odometer: {log.odometer}</p>

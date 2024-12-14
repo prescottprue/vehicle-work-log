@@ -14,7 +14,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   const formData = await request.formData();
   const title = formData.get("title");
-  const body = formData.get("body");
+  const notes = formData.get("notes");
   const type = formData.get("type");
   const costInput = formData.get("cost");
   const cost = Number(costInput);
@@ -160,7 +160,7 @@ export default function NewNotePage() {
           <span>Notes: </span>
           <textarea
             ref={notesRef}
-            name="body"
+            name="notes"
             rows={8}
             className="w-full flex-1 rounded-md border-2 border-blue-500 px-3 py-2 text-lg leading-6"
             aria-invalid={actionData?.errors?.notes ? true : undefined}
