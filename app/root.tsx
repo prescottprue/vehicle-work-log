@@ -15,7 +15,7 @@ import {
 import { getUser } from "~/session.server";
 import stylesheet from "~/tailwind.css";
 
-import { useOptionalUser, useUser } from "./utils";
+import { useOptionalUser } from "./utils";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },

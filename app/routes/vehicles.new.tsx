@@ -5,7 +5,7 @@ import {
   unstable_createMemoryUploadHandler,
   unstable_parseMultipartFormData,
 } from "@remix-run/node";
-import { Form, NavLink, useActionData } from "@remix-run/react";
+import { Form, useActionData } from "@remix-run/react";
 import { useEffect, useRef, useState } from "react";
 
 import { Breadcrumb, Breadcrumbs } from "~/components/Breadcrumbs";
@@ -30,7 +30,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const year = formData.get("year");
 
   const file = formData.get("avatar");
-  let avatarPath;
+  let avatarPath = null;
   if (file) {
     const fileObj = file as File;
     console.log("file", fileObj);
@@ -69,7 +69,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 
-  if (typeof year !== "string" || year.length === 0) {
+  if (typeof year !== "number") {
     return json(
       { errors: { ...defaultErrors, year: "Year is required" } },
       { status: 400 },

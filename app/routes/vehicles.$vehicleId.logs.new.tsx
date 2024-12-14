@@ -40,6 +40,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     );
   }
 
+  if (typeof notes !== "string" && notes !== null) {
+    return json(
+      { errors: { ...defaultErrors, notes: "Title is required" } },
+      { status: 400 },
+    );
+  }
+
   if (typeof type !== "string" || type.length === 0) {
     return json(
       { errors: { ...defaultErrors, type: "Type is required" } },

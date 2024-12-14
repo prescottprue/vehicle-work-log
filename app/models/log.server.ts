@@ -1,4 +1,4 @@
-import type { User, Log, Vehicle, Mechanic, Part, Tag, Prisma } from "@prisma/client";
+import type { User, Log, Vehicle, Mechanic, Part, Tag } from "@prisma/client";
 
 import { prisma } from "~/db.server";
 
