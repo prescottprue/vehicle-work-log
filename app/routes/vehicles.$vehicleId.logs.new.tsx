@@ -1,5 +1,10 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
+import {
+  json,
+  redirect,
+  unstable_createMemoryUploadHandler,
+  unstable_parseMultipartFormData,
+} from "@remix-run/node";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { useEffect, useRef } from "react";
 import invariant from "tiny-invariant";
@@ -14,8 +19,14 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const userId = await requireUserId(request);
 
   invariant(params.vehicleId);
-
-  const formData = await request.formData();
+  const uploadHandler = unstable_createMemoryUploadHandler({
+    maxPartSize: 500_000,
+  });
+  const formData = await unstable_parseMultipartFormData(
+    request,
+    uploadHandler,
+  );
+  // const formData = await request.formData();
   const title = formData.get("title");
   const notes = formData.get("notes");
   const type = formData.get("type");
