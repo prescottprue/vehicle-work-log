@@ -1,32 +1,45 @@
-import { useRef, type InputHTMLAttributes } from "react";
+import { type InputHTMLAttributes, type DetailedHTMLProps } from "react";
 
-export interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string
-  error?: string | null
+export interface InputFieldProps extends DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement> {
+  label: string;
+  error?: string | null;
+  className?: string;
+  inputClassName?: string;
 }
 
-export function InputField({ name, label, error, ...props }: InputFieldProps) {
-  const fieldRef = useRef<HTMLInputElement>(null);
+export function InputField({
+  id,
+  label,
+  error,
+  className,
+  inputClassName,
+  ref,
+  ...props
+}: InputFieldProps) {
   return (
-    <div className="flex w-full flex-col">
-      <label className="flex w-full flex-col gap-1">
-        <span>{label}</span>
+    <div className={className}>
+      <label
+        htmlFor={id}
+        className="block text-sm/6 font-semibold text-gray-900"
+      >
+        {label}
+      </label>
+      <div className="mt-2.5">
         <input
-          ref={fieldRef}
-          name={name}
-          className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
+          id={id}
+          type="text"
+          ref={ref}
+          className={inputClassName ?? "block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"}
           aria-invalid={error ? true : undefined}
-          aria-errormessage={
-            error ? `${name}-error` : undefined
-          }
+          aria-errormessage={error ? "title-error" : undefined}
           {...props}
         />
-      </label>
+      </div>
       {error ? (
-        <div className="pt-1 text-red-700" id={`${name}-error`}>
+        <span className="pt-1 text-red-700" id="title-error">
           {error}
-        </div>
+        </span>
       ) : null}
     </div>
-  )
+  );
 }

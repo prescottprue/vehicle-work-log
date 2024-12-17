@@ -1,11 +1,14 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, useActionData } from "@remix-run/react";
+import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { useEffect, useRef } from "react";
 import invariant from "tiny-invariant";
+import { InputField } from "~/components/InputField";
 
 import { createLog } from "~/models/log.server";
 import { requireUserId } from "~/session.server";
+import { uploadFile } from "~/storage.server";
+import { toLocalISOString } from "~/utils";
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
   const userId = await requireUserId(request);
@@ -20,7 +23,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const cost = Number(costInput);
   const odometerInput = formData.get("odometer");
   const odometer = Number(odometerInput);
-  console.log({ odometer, typeof: typeof odometer });
   const servicedAt = formData.get("servicedAt");
   const selfService = formData.get("selfService");
 
@@ -77,7 +79,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     );
   }
 
-  if (typeof selfService !== "string" || selfService === null) {
+  if (typeof selfService !== "string" && selfService !== null) {
     return json(
       {
         errors: {
@@ -88,8 +90,32 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       { status: 400 },
     );
   }
+  const attachmentsInput = formData.getAll("attachments");
+  console.log('attachments', attachmentsInput)
 
-  // TODO: Add mechanic and tags
+  let avatarPath = null;
+  if (attachmentsInput) {
+    console.log('attachments', attachmentsInput)
+    const attachments = attachmentsInput as File[]
+    try {
+      await Promise.all(attachments.map(async (attachment) => {
+        const fileObj = attachment as File;
+        avatarPath = `log-attachments/${userId}/${Date.now()}`;
+        const fileBuffer = await fileObj.arrayBuffer();
+        await uploadFile(avatarPath, Buffer.from(fileBuffer), fileObj.size, {
+          "Content-Type": fileObj.type,
+        });
+      }))
+    } catch (err) {
+      console.log("Error uploading file", { err });
+      return json(
+        { errors: { ...defaultErrors, avatar: "Error uploading Avatar" } },
+        { status: 400 },
+      );
+    }
+  }
+
+  // TODO: Add mechanic, tags and parts
 
   const log = await createLog({
     notes,
@@ -102,19 +128,17 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     userId,
     vehicleId: params.vehicleId,
   });
-  console.log("new log", { log });
   return redirect(`/vehicles/${params.vehicleId}/logs/${log.id}`);
 };
 
 export default function NewNotePage() {
   const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+
   const titleRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
-  const typeRef = useRef<HTMLInputElement>(null);
-  const costRef = useRef<HTMLInputElement>(null);
-  const odometerRef = useRef<HTMLInputElement>(null);
-  const selfServiceRef = useRef<HTMLInputElement>(null);
-  const servicedAtRef = useRef<HTMLInputElement>(null);
+
+  const isSubmitting = navigation.formAction?.endsWith("/logs/new");
 
   useEffect(() => {
     if (actionData?.errors?.title) {
@@ -137,31 +161,43 @@ export default function NewNotePage() {
       <div className="text-right">
         <button
           type="submit"
-          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
+          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400 disabled:opacity-70 text-center inline-flex items-center"
+          disabled={isSubmitting}
         >
-          Save
+          {isSubmitting ? (
+            <div className="px-2">
+              <svg
+                className="animate-spin -ml-1 h-5 w-5 text-white"
+                style={{ lineHeight: 1 }}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </div>
+          ) : (
+            <>Save</>
+          )}
         </button>
       </div>
-      <div>
-        <label className="flex w-full flex-col gap-1">
-          <span>Title: </span>
-          <input
-            ref={titleRef}
-            name="title"
-            className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
-            aria-invalid={actionData?.errors?.title ? true : undefined}
-            aria-errormessage={
-              actionData?.errors?.title ? "title-error" : undefined
-            }
-          />
-        </label>
-        {actionData?.errors?.title ? (
-          <div className="pt-1 text-red-700" id="title-error">
-            {actionData.errors.title}
-          </div>
-        ) : null}
-      </div>
-
+      <InputField
+        name="title"
+        label="Title"
+        error={actionData?.errors?.title}
+      />
       <div className="flex w-full flex-col">
         <label className="flex w-full flex-col gap-1">
           <span>Notes: </span>
@@ -182,95 +218,16 @@ export default function NewNotePage() {
           </div>
         ) : null}
       </div>
-
-      <div>
-        <label className="flex w-full flex-col gap-1">
-          <span>Type: </span>
-          <input
-            ref={typeRef}
-            name="type"
-            className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
-            aria-invalid={actionData?.errors?.type ? true : undefined}
-            aria-errormessage={
-              actionData?.errors?.type ? "type-error" : undefined
-            }
-          />
-        </label>
-        {actionData?.errors?.type ? (
-          <div className="pt-1 text-red-700" id="type-error">
-            {actionData.errors.type}
-          </div>
-        ) : null}
+      <InputField name="type" label="Type" error={actionData?.errors?.type} />
+      <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+        <InputField type="number" name="cost" label="Cost" error={actionData?.errors?.cost} />
+        <InputField type="number" name="odometer" label="Odometer" error={actionData?.errors?.odometer} />
       </div>
-
-      <div>
-        <label className="flex w-full flex-col gap-1">
-          <span>Cost: </span>
-          <input
-            ref={costRef}
-            name="cost"
-            type="number"
-            className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
-            aria-invalid={actionData?.errors?.cost ? true : undefined}
-            aria-errormessage={
-              actionData?.errors?.cost ? "cost-error" : undefined
-            }
-          />
-        </label>
-        {actionData?.errors?.cost ? (
-          <div className="pt-1 text-red-700" id="cost-error">
-            {actionData.errors.cost}
-          </div>
-        ) : null}
-      </div>
-
-      <div>
-        <label className="flex w-full flex-col gap-1">
-          <span>Odometer: </span>
-          <input
-            ref={odometerRef}
-            name="odometer"
-            type="number"
-            className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
-            aria-invalid={actionData?.errors?.odometer ? true : undefined}
-            aria-errormessage={
-              actionData?.errors?.odometer ? "odometer-error" : undefined
-            }
-          />
-        </label>
-        {actionData?.errors?.odometer ? (
-          <div className="pt-1 text-red-700" id="odometer-error">
-            {actionData.errors.odometer}
-          </div>
-        ) : null}
-      </div>
-
-      <div>
-        <label className="flex w-full flex-col gap-1">
-          <span>Service Date/Time: </span>
-          <input
-            ref={servicedAtRef}
-            name="servicedAt"
-            type="date"
-            className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
-            aria-invalid={actionData?.errors?.servicedAt ? true : undefined}
-            aria-errormessage={
-              actionData?.errors?.servicedAt ? "servicedAt-error" : undefined
-            }
-          />
-        </label>
-        {actionData?.errors?.servicedAt ? (
-          <div className="pt-1 text-red-700" id="servicedAt-error">
-            {actionData.errors.servicedAt}
-          </div>
-        ) : null}
-      </div>
-
+      <InputField type="datetime-local" name="servicedAt" label="Service Date/Time" error={actionData?.errors?.servicedAt} defaultValue={toLocalISOString(new Date())} />
       <div>
         <label>
           <span>Self Service: </span>
           <input
-            ref={selfServiceRef}
             name="selfService"
             type="checkbox"
             className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"
@@ -286,8 +243,47 @@ export default function NewNotePage() {
           </div>
         ) : null}
       </div>
-      <h3>Parts</h3>
-
+      <h3>Attachments</h3>
+      <input
+          type="file"
+          id="attachments"
+          name="attachments"
+          multiple
+          onChange={(e) => {
+            console.log("e", e);
+            // if (e.target.files) {
+            //   setAvatarUrl(URL.createObjectURL(e.target.files[0]));
+            // }
+          }}
+        />
+      {/* <h3>Parts</h3>
+      <table className="table-auto">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Manufacturer</th>
+      <th>Price</th>
+      <th>Link</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>The Sliding Mr. Bones (Next Stop, Pottersville)</td>
+      <td>Malcolm Lockyer</td>
+      <td>1961</td>
+    </tr>
+    <tr>
+      <td>Witchy Woman</td>
+      <td>The Eagles</td>
+      <td>1972</td>
+    </tr>
+    <tr>
+      <td>Shining Star</td>
+      <td>Earth, Wind, and Fire</td>
+      <td>1975</td>
+    </tr>
+  </tbody>
+</table> */}
     </Form>
   );
 }
