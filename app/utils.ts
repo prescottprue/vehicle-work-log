@@ -74,3 +74,12 @@ export function useUser(): User {
 export function validateEmail(email: unknown): email is string {
   return typeof email === "string" && email.length > 3 && email.includes("@");
 }
+
+export function toLocalISOString(date: Date) {
+  var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+  const localDate = (new Date(Date.now() - tzoffset))
+    // Optionally remove second/millisecond if needed
+    localDate.setSeconds(0);
+    localDate.setMilliseconds(0);
+  return localDate.toISOString().slice(0, -1);
+}

@@ -10,6 +10,7 @@ import invariant from "tiny-invariant";
 
 import { deleteLog, getLog } from "~/models/log.server";
 import { requireUserId } from "~/session.server";
+import { getFileUrl, getFileWithSignedUrl } from "~/storage.server";
 
 export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
@@ -21,10 +22,11 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
     vehicleId: params.vehicleId,
     userId,
   });
+  const attachments = log?.attachmentsPaths && await Promise.all(log?.attachmentsPaths.map((attachmentPath) => getFileWithSignedUrl(attachmentPath)))
   if (!log) {
     throw new Response("Not Found", { status: 404 });
   }
-  return json({ log });
+  return json({ log, attachments });
 };
 
 export const action = async ({ params, request }: ActionFunctionArgs) => {
@@ -38,8 +40,7 @@ export const action = async ({ params, request }: ActionFunctionArgs) => {
 };
 
 export default function NoteDetailsPage() {
-  const { log } = useLoaderData<typeof loader>();
-
+  const { log, attachments } = useLoaderData<typeof loader>();
   return (
     <div>
       <h3 className="text-2xl font-bold">{log.title}</h3>
@@ -48,6 +49,18 @@ export default function NoteDetailsPage() {
       <p className="py-4">Type: {log.type}</p>
       <p className="py-4">Odometer: {log.odometer}</p>
       <p className="py-4">Cost: {log.cost}</p>
+      <h3>Attachments</h3>
+      {
+        attachments?.length
+        ? (
+          attachments.map((attachment) => attachment.metaData['content-type'].includes('image') ? (
+            <img src={attachment.url} />
+          ): (
+            <div>{JSON.stringify(attachment)}</div>
+          ))
+        )
+        : <div>No Attachments</div>
+      }
       <hr className="my-4" />
       <Form method="post">
         <button
