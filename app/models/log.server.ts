@@ -113,6 +113,94 @@ export async function createLog({
   return newLog;
 }
 
+export async function updateLog({
+  id,
+  title,
+  notes,
+  type,
+  cost,
+  odometer,
+  servicedAt,
+  selfService,
+  userId,
+  vehicleId,
+  mechanicId,
+  parts,
+  tags,
+  attachmentsPaths,
+}: Partial<Pick<
+  Log,
+  | "id"
+  | "title"
+  | "notes"
+  | "type"
+  | "cost"
+  | "odometer"
+  | "servicedAt"
+  | "selfService"
+  | "attachmentsPaths"
+>> & {
+  userId: User["id"];
+  vehicleId: Vehicle["id"];
+  mechanicId?: Mechanic["id"];
+  tags?: Tag[];
+  parts?: Part[];
+}) {
+  const newTags = tags?.filter((tag) => !tag.id);
+  const newParts = parts?.filter((part) => !part.id);
+  const newLog = await prisma.log.update({
+    where: { id },
+    data: {
+      title,
+      notes,
+      type,
+      cost,
+      odometer,
+      servicedAt,
+      selfService,
+      user: {
+        connect: {
+          id: userId,
+        },
+      },
+      mechanic: mechanicId
+        ? {
+            connect: {
+              id: mechanicId,
+            },
+          }
+        : undefined,
+      vehicle: {
+        connect: {
+          id: vehicleId,
+        },
+      },
+      parts: newParts?.length ? { create: newParts } : undefined,
+      tags: newTags?.length ? { create: newTags } : undefined,
+      attachmentsPaths,
+    },
+  });
+
+  // Update new log with tags/parts which already exist
+  const existingTags = tags?.filter((tag) => tag.id);
+  const existingParts = parts?.filter((part) => part.id);
+  if (existingTags?.length || existingParts?.length) {
+    await prisma.log.update({
+      where: {
+        id: newLog.id,
+      },
+      data: {
+        tags: existingTags?.length
+          ? { set: existingTags.map((tag) => ({ id: tag.id })) }
+          : undefined,
+        parts: existingParts?.length
+          ? { set: existingParts.map((tag) => ({ id: tag.id })) }
+          : undefined,
+      },
+    });
+  }
+  return newLog;
+}
 export function deleteLog({
   id,
   userId,

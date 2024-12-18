@@ -42,3 +42,13 @@ export async function getFileUrl(objectName: string) {
   const objectUrl = await minio.presignedGetObject(bucket, objectName);
   return objectUrl;
 }
+
+
+export async function getFileWithSignedUrl(objectName: string) {
+  const stats = await minio.statObject(bucket, objectName)
+  const objectUrl = await minio.presignedGetObject(bucket, objectName);
+  return {
+    ...stats,
+    url: objectUrl
+  };
+}

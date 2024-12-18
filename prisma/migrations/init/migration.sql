@@ -41,6 +41,7 @@ CREATE TABLE "Log" (
     "mechanicId" TEXT,
     "userId" TEXT NOT NULL,
     "vehicleId" TEXT NOT NULL,
+    "attachmentsPaths" TEXT[] DEFAULT ARRAY[]::TEXT[],
 
     CONSTRAINT "Log_pkey" PRIMARY KEY ("id")
 );

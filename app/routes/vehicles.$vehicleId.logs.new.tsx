@@ -10,7 +10,7 @@ import { useEffect, useRef } from "react";
 import invariant from "tiny-invariant";
 import { InputField } from "~/components/InputField";
 
-import { createLog } from "~/models/log.server";
+import { createLog, updateLog } from "~/models/log.server";
 import { requireUserId } from "~/session.server";
 import { uploadFile } from "~/storage.server";
 import { toLocalISOString } from "~/utils";
@@ -101,30 +101,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       { status: 400 },
     );
   }
-  const attachmentsInput = formData.getAll("attachments");
-  console.log('attachments', attachmentsInput)
-
-  let avatarPath = null;
-  if (attachmentsInput) {
-    console.log('attachments', attachmentsInput)
-    const attachments = attachmentsInput as File[]
-    try {
-      await Promise.all(attachments.map(async (attachment) => {
-        const fileObj = attachment as File;
-        avatarPath = `log-attachments/${userId}/${Date.now()}`;
-        const fileBuffer = await fileObj.arrayBuffer();
-        await uploadFile(avatarPath, Buffer.from(fileBuffer), fileObj.size, {
-          "Content-Type": fileObj.type,
-        });
-      }))
-    } catch (err) {
-      console.log("Error uploading file", { err });
-      return json(
-        { errors: { ...defaultErrors, avatar: "Error uploading Avatar" } },
-        { status: 400 },
-      );
-    }
-  }
 
   // TODO: Add mechanic, tags and parts
 
@@ -139,6 +115,38 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     userId,
     vehicleId: params.vehicleId,
   });
+  const attachmentsInput = formData.getAll("attachments");
+
+  let attachmentsPaths: string[] = [];
+  if (attachmentsInput) {
+    const attachments = attachmentsInput as File[]
+    try {
+      await Promise.all(attachments.map(async (attachment) => {
+        const attachmentPath = `log-attachments/${params.vehicleId}/${log.id}/${attachment.name}`;
+        const fileBuffer = await attachment.arrayBuffer();
+        await uploadFile(attachmentPath, Buffer.from(fileBuffer), attachment.size, {
+          "Content-Type": attachment.type,
+        });
+        attachmentsPaths.push(attachmentPath)
+      }))
+    } catch (err) {
+      console.log("Error uploading attachments", { err });
+      return json(
+        { errors: { ...defaultErrors, avatar: "Error uploading attachments" } },
+        { status: 400 },
+      );
+    }
+  }
+  // Save attachment paths
+  if (attachmentsPaths.length) {
+    await updateLog({
+      id: log.id,
+      attachmentsPaths,
+      userId,
+      vehicleId: params.vehicleId,
+    });
+  }
+
   return redirect(`/vehicles/${params.vehicleId}/logs/${log.id}`);
 };
 
@@ -162,6 +170,7 @@ export default function NewNotePage() {
   return (
     <Form
       method="post"
+      encType="multipart/form-data"
       style={{
         display: "flex",
         flexDirection: "column",
