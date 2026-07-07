@@ -4,11 +4,15 @@ import { btnPrimary, btnSecondary } from "~/components/ui";
 import {
   defaultQuad,
   detectDocumentQuad,
+  FLATTEN_TIMEOUT_MS,
   type Quad,
   warpDocument,
 } from "~/lib/document-scan";
 
-type Status = "idle" | "detecting" | "flattening" | "error";
+type Status = "idle" | "detecting" | "flattening" | "fallback";
+
+/** How long the "using the original" notice shows before auto-continuing. */
+const FALLBACK_NOTICE_MS = 2_500;
 
 /** Clamp a fractional coordinate to the image. */
 function clamp01(n: number): number {
@@ -20,8 +24,9 @@ function clamp01(n: number): number {
  * draggable quad — no WASM yet. OpenCV.js (a ~10MB module) loads lazily only
  * when the user taps "Auto-detect" or "Flatten", so a routine capture never
  * pays that cost. Detection/warp run on capped-size images and are
- * time-boxed, so they can't hang or OOM the tab on iOS. Browser-only — render
- * from an event handler, never SSR.
+ * time-boxed, so they can't hang or OOM the tab on iOS; if flattening fails
+ * or times out, the modal announces it and auto-continues with the original
+ * photo. Browser-only — render from an event handler, never SSR.
  */
 export function DocumentScanner({
   file,
@@ -42,12 +47,19 @@ export function DocumentScanner({
   const [note, setNote] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const drag = useRef<{ corner: number; id: number } | null>(null);
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const u = URL.createObjectURL(file);
     setUrl(u);
     return () => URL.revokeObjectURL(u);
   }, [file]);
+
+  useEffect(() => {
+    return () => {
+      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+    };
+  }, []);
 
   function onImgLoad() {
     const img = imgRef.current;
@@ -95,14 +107,33 @@ export function DocumentScanner({
   async function flatten() {
     setStatus("flattening");
     setNote(null);
+    // Overall backstop on top of the per-step timeouts inside warpDocument —
+    // whatever happens, the user is never stuck on the spinner.
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      onConfirm(await warpDocument(file, quad));
+      const flattened = await Promise.race([
+        warpDocument(file, quad),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("Flatten timed out")),
+            FLATTEN_TIMEOUT_MS,
+          );
+        }),
+      ]);
+      onConfirm(flattened);
     } catch {
-      setStatus("error");
+      // Announce the failure briefly, then continue with the original photo.
+      setStatus("fallback");
+      fallbackTimer.current = setTimeout(
+        () => onConfirm(file),
+        FALLBACK_NOTICE_MS,
+      );
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  const busy = status === "detecting" || status === "flattening";
+  const busy = status !== "idle";
   const points =
     box && quad.map((p) => `${p.x * box.w},${p.y * box.h}`).join(" ");
 
@@ -129,7 +160,7 @@ export function DocumentScanner({
               onLoad={onImgLoad}
               className="max-h-[68vh] max-w-full select-none object-contain"
             />
-            {box && status !== "error" ? (
+            {box && status !== "fallback" ? (
               <>
                 <svg
                   className="pointer-events-none absolute inset-0 h-full w-full"
@@ -169,14 +200,18 @@ export function DocumentScanner({
         {busy ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <div className="flex items-center gap-3 rounded-xl bg-card px-4 py-3">
-              <span
-                aria-hidden
-                className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-accent"
-              />
-              <p className="text-sm font-medium text-ink">
+              {status !== "fallback" ? (
+                <span
+                  aria-hidden
+                  className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-accent"
+                />
+              ) : null}
+              <p className="text-sm font-medium text-ink" role="status">
                 {status === "detecting"
                   ? "Finding the document…"
-                  : "Flattening…"}
+                  : status === "flattening"
+                    ? "Flattening…"
+                    : "Couldn't flatten this photo — using the original instead."}
               </p>
             </div>
           </div>
@@ -190,78 +225,47 @@ export function DocumentScanner({
           </p>
         ) : null}
 
-        {status === "error" ? (
-          <>
-            <p className="rounded-xl border border-line bg-card p-3 text-center text-sm text-ink">
-              Couldn't flatten this photo on this device. Use the original, or
-              crop it manually.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className={`${btnSecondary} flex-1`}
-                onClick={() => onConfirm(file)}
-              >
-                Use original
-              </button>
-              <button
-                type="button"
-                className={`${btnPrimary} flex-1`}
-                onClick={() => onCropInstead(file)}
-              >
-                Crop instead
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className={`${btnSecondary} flex-1`}
-                onClick={() => onConfirm(file)}
-                disabled={busy}
-              >
-                Use photo
-              </button>
-              <button
-                type="button"
-                className={`${btnPrimary} flex-1`}
-                onClick={flatten}
-                disabled={busy}
-              >
-                {status === "flattening" ? "Flattening…" : "Flatten & use"}
-              </button>
-            </div>
-            <div className="flex items-center justify-center gap-4 pt-1 text-sm text-ink-muted">
-              <button
-                type="button"
-                className="hover:underline disabled:opacity-50"
-                onClick={autoDetect}
-                disabled={busy}
-              >
-                ✨ Auto-detect
-              </button>
-              <span aria-hidden>·</span>
-              <button
-                type="button"
-                className="hover:underline disabled:opacity-50"
-                onClick={() => onCropInstead(file)}
-                disabled={busy}
-              >
-                Crop
-              </button>
-              <span aria-hidden>·</span>
-              <button
-                type="button"
-                className="hover:underline"
-                onClick={onCancel}
-              >
-                Cancel
-              </button>
-            </div>
-          </>
-        )}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className={`${btnSecondary} flex-1`}
+            onClick={() => onConfirm(file)}
+            disabled={busy}
+          >
+            Use photo
+          </button>
+          <button
+            type="button"
+            className={`${btnPrimary} flex-1`}
+            onClick={flatten}
+            disabled={busy}
+          >
+            {status === "flattening" ? "Flattening…" : "Flatten & use"}
+          </button>
+        </div>
+        <div className="flex items-center justify-center gap-4 pt-1 text-sm text-ink-muted">
+          <button
+            type="button"
+            className="hover:underline disabled:opacity-50"
+            onClick={autoDetect}
+            disabled={busy}
+          >
+            ✨ Auto-detect
+          </button>
+          <span aria-hidden>·</span>
+          <button
+            type="button"
+            className="hover:underline disabled:opacity-50"
+            onClick={() => onCropInstead(file)}
+            disabled={busy}
+          >
+            Crop
+          </button>
+          <span aria-hidden>·</span>
+          <button type="button" className="hover:underline" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
