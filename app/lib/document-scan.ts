@@ -29,6 +29,17 @@ const WARP_MAX = 2000;
 const MIN_AREA_FRACTION = 0.2;
 /** Guard against a decode that never settles (malformed/huge input). */
 const DECODE_TIMEOUT_MS = 15_000;
+/**
+ * Guard against `canvas.toBlob` never calling back — iOS Safari can stall the
+ * JPEG encode under canvas memory pressure instead of failing.
+ */
+const ENCODE_TIMEOUT_MS = 10_000;
+/**
+ * Hard cap on a whole flatten (OpenCV load + decode + warp + encode). The
+ * per-step timeouts should fire first; this is the backstop that guarantees
+ * `warpDocument` settles so callers can fall back to the original photo.
+ */
+export const FLATTEN_TIMEOUT_MS = 30_000;
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -254,8 +265,10 @@ export async function warpDocument(
     );
     const out = document.createElement("canvas");
     cv.imshow(out, dst);
-    const blob = await new Promise<Blob | null>((res) =>
-      out.toBlob(res, "image/jpeg", quality),
+    const blob = await withTimeout(
+      new Promise<Blob | null>((res) => out.toBlob(res, "image/jpeg", quality)),
+      ENCODE_TIMEOUT_MS,
+      "JPEG encode",
     );
     if (!blob) return file;
     const base = file.name.replace(/\.\w+$/, "") || "scan";
