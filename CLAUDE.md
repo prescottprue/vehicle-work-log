@@ -192,20 +192,24 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
    scan/document upload; pass `aspect` for square avatar crops)),
    `document-scan.ts` (OpenCV.js document flattening — `detectDocumentQuad` +
    `warpDocument` deskew a photographed page; pure geometry helpers are
-   unit-tested; drives the `DocumentScanner` modal) + `opencv.ts` (lazy
-   OpenCV loader — see below), `vpic.ts` (NHTSA vPIC
+   unit-tested; drives the `DocumentScanner` modal; the OpenCV work runs in
+   a web worker — see below), `vpic.ts` (NHTSA vPIC
    client — VIN decode prefills year/make/model/trim/engine; make/model
    datalist suggestions; browser-direct CORS calls, no API key, 5s timeout,
    degrades gracefully to plain free-text)
 
-   **OpenCV.js is self-hosted, not bundled.** `scripts/copy-opencv.mjs`
-   copies the ~10MB UMD build from node_modules into `public/opencv.js`
-   (gitignored; runs on postinstall + dev + build). `app/lib/opencv.ts`
-   injects it via a `<script>` on first scan and waits for
-   `window.cv`/`onRuntimeInitialized`. A bundler `import()` would drag the
-   10MB into the Cloudflare Worker upload even though it only runs in the
-   browser — the static asset keeps the Worker lean (~700KB gzip) and the
-   file edge-caches after first download.
+   **OpenCV.js is self-hosted, not bundled, and runs in a web worker.**
+   `scripts/copy-opencv.mjs` copies the ~10MB UMD build from node_modules
+   into `public/opencv.js` (gitignored; runs on postinstall + dev + build).
+   `public/document-scan.worker.js` (checked in, deliberately outside the
+   Vite build like opencv.js itself) `importScripts`-loads it on first scan
+   and runs detect/warp off the main thread; `document-scan.ts` talks to it
+   and **terminates the worker on timeout** — OpenCV calls are synchronous
+   WASM that main-thread timers can't interrupt, which is how the iOS Safari
+   scan hang happened. A bundler `import()` would drag the 10MB into the
+   Cloudflare Worker upload even though it only runs in the browser — the
+   static assets keep the Worker lean (~700KB gzip) and edge-cache after
+   first download.
 9. `app/scan/` — Scan Bay. `receipt.ts` is the isomorphic extraction
    contract (JSON schema + prompt + `normalizeReceipt`/`receiptToNotes`);
    `extract.server.ts` is the runtime seam (Workers AI binding on CF,

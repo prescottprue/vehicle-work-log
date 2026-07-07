@@ -1,16 +1,19 @@
 /**
  * Client-side document flattening: find the four corners of a document in a
- * photo and perspective-warp it flat (deskew). Built on OpenCV.js, loaded
- * lazily via `~/lib/opencv`. The detection + warp helpers are browser-only
- * (canvas + WASM); the geometry helpers below them are pure and unit-tested.
+ * photo and perspective-warp it flat (deskew). The OpenCV work runs in a
+ * dedicated web worker (`public/document-scan.worker.js`) because OpenCV
+ * calls are synchronous WASM that JS timers cannot interrupt on the main
+ * thread — in a worker, a hung call is killed for real via
+ * `worker.terminate()`, so the page can never freeze (the iOS Safari hang
+ * this replaced). The detection + warp entry points are browser-only
+ * (canvas + worker); the geometry helpers below them are pure and
+ * unit-tested.
  *
  * Coordinates crossing the module boundary are fractions of the
  * orientation-corrected image (0..1), so callers work in the displayed
  * `<img>`'s space without caring about intrinsic pixel size or EXIF rotation
  * — same convention as `cropImage`.
  */
-
-import { loadOpenCv } from "~/lib/opencv";
 
 export type Point = { x: number; y: number };
 /** Four corners, ordered top-left, top-right, bottom-right, bottom-left. */
@@ -35,11 +38,20 @@ const DECODE_TIMEOUT_MS = 15_000;
  */
 const ENCODE_TIMEOUT_MS = 10_000;
 /**
- * Hard cap on a whole flatten (OpenCV load + decode + warp + encode). The
- * per-step timeouts should fire first; this is the backstop that guarantees
+ * Per-call cap on worker round-trips. The first call also downloads + inits
+ * the ~10MB OpenCV build inside the worker, so this can't be too tight. On
+ * expiry the worker is TERMINATED — unlike a main-thread timer, this stops a
+ * wedged WASM call dead; the next attempt starts a fresh worker.
+ */
+const CV_CALL_TIMEOUT_MS = 25_000;
+/**
+ * Hard cap on a whole flatten (worker call + decode + encode). The per-step
+ * timeouts should fire first; this is the backstop that guarantees
  * `warpDocument` settles so callers can fall back to the original photo.
  */
 export const FLATTEN_TIMEOUT_MS = 30_000;
+
+const WORKER_URL = "/document-scan.worker.js";
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -60,6 +72,96 @@ function withTimeout<T>(
     );
   });
 }
+
+// --- Worker client -------------------------------------------------------
+
+type DetectRequest = {
+  op: "detect";
+  width: number;
+  height: number;
+  buffer: ArrayBuffer;
+  minAreaFraction: number;
+};
+type WarpRequest = {
+  op: "warp";
+  width: number;
+  height: number;
+  buffer: ArrayBuffer;
+  quad: Quad;
+  outWidth: number;
+  outHeight: number;
+};
+type DetectResponse = { points: Point[] | null };
+type WarpResponse = { width: number; height: number; buffer: ArrayBuffer };
+
+type Pending = {
+  resolve: (value: unknown) => void;
+  reject: (err: Error) => void;
+};
+
+let cvWorker: Worker | null = null;
+let nextCallId = 0;
+const pending = new Map<number, Pending>();
+
+/** Kill the worker and fail every in-flight call (timeout / script error). */
+function destroyCvWorker(err: Error) {
+  cvWorker?.terminate();
+  cvWorker = null;
+  const waiting = [...pending.values()];
+  pending.clear();
+  for (const p of waiting) p.reject(err);
+}
+
+function getCvWorker(): Worker {
+  if (cvWorker) return cvWorker;
+  const worker = new Worker(WORKER_URL);
+  worker.onmessage = (event) => {
+    const { id, ok, error, ...rest } = event.data as {
+      id: number;
+      ok: boolean;
+      error?: string;
+    };
+    const call = pending.get(id);
+    if (!call) return;
+    pending.delete(id);
+    if (ok) call.resolve(rest);
+    else call.reject(new Error(error ?? "Scan worker error"));
+  };
+  worker.onerror = (event) => {
+    destroyCvWorker(
+      new Error(`Scan worker failed: ${event.message || "script error"}`),
+    );
+  };
+  cvWorker = worker;
+  return worker;
+}
+
+function callCvWorker<T>(
+  request: DetectRequest | WarpRequest,
+  label: string,
+): Promise<T> {
+  const id = nextCallId++;
+  const worker = getCvWorker();
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      // The only way to stop a stuck synchronous WASM call.
+      destroyCvWorker(new Error(`${label} timed out`));
+    }, CV_CALL_TIMEOUT_MS);
+    pending.set(id, {
+      resolve: (value) => {
+        clearTimeout(timer);
+        resolve(value as T);
+      },
+      reject: (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    });
+    worker.postMessage({ id, ...request }, [request.buffer]);
+  });
+}
+
+// --- Geometry (pure, unit-tested) ----------------------------------------
 
 export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -111,11 +213,13 @@ export function defaultQuad(inset = 0.08): Quad {
   ];
 }
 
-/** Decode a File to a canvas no larger than `maxDim`, orientation-corrected. */
-async function fileToCanvas(
+// --- Detection + warp entry points (browser-only) -------------------------
+
+/** Decode a File to RGBA pixels no larger than `maxDim`, orientation-corrected. */
+async function fileToImageData(
   file: File,
   maxDim: number,
-): Promise<HTMLCanvasElement | null> {
+): Promise<ImageData | null> {
   const bitmap = await withTimeout(
     createImageBitmap(file, { imageOrientation: "from-image" }),
     DECODE_TIMEOUT_MS,
@@ -129,7 +233,7 @@ async function fileToCanvas(
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas;
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
   } finally {
     // Release the full-resolution bitmap promptly — critical on iOS.
     bitmap.close();
@@ -139,71 +243,24 @@ async function fileToCanvas(
 /**
  * Detect the document quadrilateral in an image, as fractional corners, or
  * null when no confident rectangle is found (caller falls back to a manual
- * crop / default quad). Runs Canny edge detection → contour search → pick the
- * largest convex 4-gon covering enough of the frame.
+ * crop / default quad).
  */
 export async function detectDocumentQuad(file: File): Promise<Quad | null> {
-  const cv = await loadOpenCv();
-  const canvas = await fileToCanvas(file, DETECT_MAX);
-  if (!canvas) return null;
-  const { width: w, height: h } = canvas;
-
-  const src = cv.imread(canvas);
-  const gray = new cv.Mat();
-  const edges = new cv.Mat();
-  const contours = new cv.MatVector();
-  const hierarchy = new cv.Mat();
-  try {
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
-    cv.Canny(gray, edges, 75, 200);
-    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
-    cv.dilate(edges, edges, kernel);
-    kernel.delete();
-    cv.findContours(
-      edges,
-      contours,
-      hierarchy,
-      cv.RETR_LIST,
-      cv.CHAIN_APPROX_SIMPLE,
-    );
-
-    const minArea = w * h * MIN_AREA_FRACTION;
-    let best: { quad: Quad; area: number } | null = null;
-    for (let i = 0; i < contours.size(); i++) {
-      const contour = contours.get(i);
-      const approx = new cv.Mat();
-      cv.approxPolyDP(
-        contour,
-        approx,
-        0.02 * cv.arcLength(contour, true),
-        true,
-      );
-      if (approx.rows === 4 && cv.isContourConvex(approx)) {
-        const area = Math.abs(cv.contourArea(approx));
-        if (area >= minArea && (!best || area > best.area)) {
-          const pts: Point[] = [];
-          for (let j = 0; j < 4; j++) {
-            pts.push({
-              x: approx.data32S[j * 2],
-              y: approx.data32S[j * 2 + 1],
-            });
-          }
-          best = { quad: orderCorners(pts), area };
-        }
-      }
-      approx.delete();
-      contour.delete();
-    }
-    if (!best) return null;
-    return best.quad.map((p) => ({ x: p.x / w, y: p.y / h })) as Quad;
-  } finally {
-    src.delete();
-    gray.delete();
-    edges.delete();
-    contours.delete();
-    hierarchy.delete();
-  }
+  const image = await fileToImageData(file, DETECT_MAX);
+  if (!image) return null;
+  const { width: w, height: h } = image;
+  const { points } = await callCvWorker<DetectResponse>(
+    {
+      op: "detect",
+      width: w,
+      height: h,
+      buffer: image.data.buffer as ArrayBuffer,
+      minAreaFraction: MIN_AREA_FRACTION,
+    },
+    "Document detect",
+  );
+  if (!points) return null;
+  return orderCorners(points).map((p) => ({ x: p.x / w, y: p.y / h })) as Quad;
 }
 
 /**
@@ -217,67 +274,50 @@ export async function warpDocument(
   quadFractions: Quad,
   { quality = 0.92 }: { quality?: number } = {},
 ): Promise<File> {
-  const cv = await loadOpenCv();
-  const canvas = await fileToCanvas(file, WARP_MAX);
-  if (!canvas) return file;
+  const image = await fileToImageData(file, WARP_MAX);
+  if (!image) return file;
 
   const quad = orderCorners(
     quadFractions.map((p) => ({
-      x: p.x * canvas.width,
-      y: p.y * canvas.height,
+      x: p.x * image.width,
+      y: p.y * image.height,
     })),
   );
-  const { width, height } = quadOutputSize(quad);
-  const [tl, tr, br, bl] = quad;
+  const { width: outWidth, height: outHeight } = quadOutputSize(quad);
 
-  const src = cv.imread(canvas);
-  const dst = new cv.Mat();
-  const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    tl.x,
-    tl.y,
-    tr.x,
-    tr.y,
-    br.x,
-    br.y,
-    bl.x,
-    bl.y,
-  ]);
-  const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+  const warped = await callCvWorker<WarpResponse>(
+    {
+      op: "warp",
+      width: image.width,
+      height: image.height,
+      buffer: image.data.buffer as ArrayBuffer,
+      quad,
+      outWidth,
+      outHeight,
+    },
+    "Document warp",
+  );
+
+  const out = document.createElement("canvas");
+  out.width = warped.width;
+  out.height = warped.height;
+  const ctx = out.getContext("2d");
+  if (!ctx) return file;
+  ctx.putImageData(
+    new ImageData(
+      new Uint8ClampedArray(warped.buffer),
+      warped.width,
+      warped.height,
+    ),
     0,
     0,
-    width,
-    0,
-    width,
-    height,
-    0,
-    height,
-  ]);
-  const transform = cv.getPerspectiveTransform(srcTri, dstTri);
-  try {
-    cv.warpPerspective(
-      src,
-      dst,
-      transform,
-      new cv.Size(width, height),
-      cv.INTER_LINEAR,
-      cv.BORDER_CONSTANT,
-      new cv.Scalar(),
-    );
-    const out = document.createElement("canvas");
-    cv.imshow(out, dst);
-    const blob = await withTimeout(
-      new Promise<Blob | null>((res) => out.toBlob(res, "image/jpeg", quality)),
-      ENCODE_TIMEOUT_MS,
-      "JPEG encode",
-    );
-    if (!blob) return file;
-    const base = file.name.replace(/\.\w+$/, "") || "scan";
-    return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
-  } finally {
-    src.delete();
-    dst.delete();
-    srcTri.delete();
-    dstTri.delete();
-    transform.delete();
-  }
+  );
+  const blob = await withTimeout(
+    new Promise<Blob | null>((res) => out.toBlob(res, "image/jpeg", quality)),
+    ENCODE_TIMEOUT_MS,
+    "JPEG encode",
+  );
+  if (!blob) return file;
+  const base = file.name.replace(/\.\w+$/, "") || "scan";
+  return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
 }

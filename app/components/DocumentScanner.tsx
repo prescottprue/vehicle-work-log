@@ -12,7 +12,12 @@ import {
 type Status = "idle" | "detecting" | "flattening" | "fallback";
 
 /** How long the "using the original" notice shows before auto-continuing. */
-const FALLBACK_NOTICE_MS = 2_500;
+const FALLBACK_NOTICE_MS = 4_000;
+
+/** Short human-readable reason for a failed scan op, for the on-screen note. */
+function reasonOf(err: unknown): string {
+  return err instanceof Error && err.message ? err.message : "unknown error";
+}
 
 /** Clamp a fractional coordinate to the image. */
 function clamp01(n: number): number {
@@ -21,12 +26,13 @@ function clamp01(n: number): number {
 
 /**
  * Full-screen document-scan modal. Opens instantly showing the photo with a
- * draggable quad — no WASM yet. OpenCV.js (a ~10MB module) loads lazily only
- * when the user taps "Auto-detect" or "Flatten", so a routine capture never
- * pays that cost. Detection/warp run on capped-size images and are
- * time-boxed, so they can't hang or OOM the tab on iOS; if flattening fails
- * or times out, the modal announces it and auto-continues with the original
- * photo. Browser-only — render from an event handler, never SSR.
+ * draggable quad — no WASM yet. OpenCV.js (a ~10MB module) loads lazily in a
+ * web worker only when the user taps "Auto-detect" or "Flatten", so a routine
+ * capture never pays that cost and the page stays responsive while WASM runs
+ * (a timed-out worker is terminated — it can't hang the tab, the iOS Safari
+ * failure mode this design exists for). If flattening fails or times out, the
+ * modal shows the reason (also console.error'd) and auto-continues with the
+ * original photo. Browser-only — render from an event handler, never SSR.
  */
 export function DocumentScanner({
   file,
@@ -45,6 +51,7 @@ export function DocumentScanner({
   const [quad, setQuad] = useState<Quad>(defaultQuad());
   const [status, setStatus] = useState<Status>("idle");
   const [note, setNote] = useState<string | null>(null);
+  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const drag = useRef<{ corner: number; id: number } | null>(null);
   const fallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,8 +105,11 @@ export function DocumentScanner({
         setNote("No clear edges found — drag the corners to fit.");
       }
       setStatus("idle");
-    } catch {
-      setNote("Auto-detect isn't available here — drag the corners, or crop.");
+    } catch (err) {
+      console.error("Document auto-detect failed", err);
+      setNote(
+        `Auto-detect failed (${reasonOf(err)}) — drag the corners, or crop.`,
+      );
       setStatus("idle");
     }
   }
@@ -121,8 +131,10 @@ export function DocumentScanner({
         }),
       ]);
       onConfirm(flattened);
-    } catch {
+    } catch (err) {
       // Announce the failure briefly, then continue with the original photo.
+      console.error("Document flatten failed", err);
+      setFallbackReason(reasonOf(err));
       setStatus("fallback");
       fallbackTimer.current = setTimeout(
         () => onConfirm(file),
@@ -211,7 +223,7 @@ export function DocumentScanner({
                   ? "Finding the document…"
                   : status === "flattening"
                     ? "Flattening…"
-                    : "Couldn't flatten this photo — using the original instead."}
+                    : `Couldn't flatten (${fallbackReason ?? "unknown error"}) — using the original instead.`}
               </p>
             </div>
           </div>
