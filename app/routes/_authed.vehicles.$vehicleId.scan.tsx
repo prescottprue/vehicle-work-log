@@ -20,6 +20,7 @@ import {
   label,
   textarea,
 } from "~/components/ui";
+import { flattenSupported } from "~/lib/document-scan";
 import { downscaleImage } from "~/lib/image";
 import { requireVehicleAccess } from "~/models/member.server";
 import { extractReceiptScan } from "~/scan/extract.server";
@@ -268,7 +269,11 @@ function ScanReceipt() {
         onChange={(e) => {
           const picked = e.target.files?.[0];
           e.currentTarget.value = "";
-          if (picked) setScanning(picked);
+          // iOS gets the plain cropper — flattening is unreliable there.
+          if (picked) {
+            if (flattenSupported()) setScanning(picked);
+            else setCropping(picked);
+          }
         }}
       />
       <input
@@ -280,7 +285,10 @@ function ScanReceipt() {
         onChange={(e) => {
           const picked = e.target.files?.[0];
           e.currentTarget.value = "";
-          if (picked) setScanning(picked);
+          if (picked) {
+            if (flattenSupported()) setScanning(picked);
+            else setCropping(picked);
+          }
         }}
       />
 
