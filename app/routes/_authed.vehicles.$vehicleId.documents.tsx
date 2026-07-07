@@ -4,7 +4,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { requireAuth } from "~/auth/session.server";
 import { DocumentScanner } from "~/components/DocumentScanner";
@@ -18,6 +18,7 @@ import {
   input,
   label as labelClass,
 } from "~/components/ui";
+import { flattenSupported } from "~/lib/document-scan";
 import {
   addVehicleDocument,
   listVehicleDocuments,
@@ -357,6 +358,9 @@ function DocumentsPage() {
   const [selected, setSelected] = useState<File[]>([]);
   const [cropIndex, setCropIndex] = useState<number | null>(null);
   const [scanIndex, setScanIndex] = useState<number | null>(null);
+  // Post-hydration so SSR and first client render agree (no navigator on SSR).
+  const [canFlatten, setCanFlatten] = useState(false);
+  useEffect(() => setCanFlatten(flattenSupported()), []);
 
   function replaceSelected(index: number, next: File) {
     setSelected((prev) => prev.map((f, j) => (j === index ? next : f)));
@@ -460,13 +464,15 @@ function DocumentsPage() {
                 </span>
                 {f.type.startsWith("image/") ? (
                   <>
-                    <button
-                      type="button"
-                      className="shrink-0 font-semibold text-accent hover:underline"
-                      onClick={() => setScanIndex(i)}
-                    >
-                      Scan
-                    </button>
+                    {canFlatten ? (
+                      <button
+                        type="button"
+                        className="shrink-0 font-semibold text-accent hover:underline"
+                        onClick={() => setScanIndex(i)}
+                      >
+                        Scan
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="shrink-0 font-semibold text-accent hover:underline"

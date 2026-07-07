@@ -206,7 +206,10 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
    and runs detect/warp off the main thread; `document-scan.ts` talks to it
    and **terminates the worker on timeout** — OpenCV calls are synchronous
    WASM that main-thread timers can't interrupt, which is how the iOS Safari
-   scan hang happened. A bundler `import()` would drag the 10MB into the
+   scan hang happened. **iOS skips flattening entirely** (`flattenSupported()`
+   — WASM init reliably timed out on real iPhones, and dragging corner
+   handles fires accidental haptic-touch): iOS users go straight to the
+   rectangular `ImageCropper`. A bundler `import()` would drag the 10MB into the
    Cloudflare Worker upload even though it only runs in the browser — the
    static assets keep the Worker lean (~700KB gzip) and edge-cache after
    first download.

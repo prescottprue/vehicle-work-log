@@ -41,15 +41,33 @@ const ENCODE_TIMEOUT_MS = 10_000;
  * Per-call cap on worker round-trips. The first call also downloads + inits
  * the ~10MB OpenCV build inside the worker, so this can't be too tight. On
  * expiry the worker is TERMINATED — unlike a main-thread timer, this stops a
- * wedged WASM call dead; the next attempt starts a fresh worker.
+ * wedged WASM call dead; the next attempt starts a fresh worker. iOS (where
+ * WASM init is the flaky, slow case) skips flattening entirely via
+ * `flattenSupported`, so this only has to accommodate desktop-class devices.
  */
-const CV_CALL_TIMEOUT_MS = 25_000;
+const CV_CALL_TIMEOUT_MS = 15_000;
 /**
  * Hard cap on a whole flatten (worker call + decode + encode). The per-step
  * timeouts should fire first; this is the backstop that guarantees
  * `warpDocument` settles so callers can fall back to the original photo.
  */
-export const FLATTEN_TIMEOUT_MS = 30_000;
+export const FLATTEN_TIMEOUT_MS = 20_000;
+
+/**
+ * Whether the flatten/auto-detect UI should be offered at all. False on iOS
+ * (every browser there is WebKit, including Chrome): WASM-in-worker init
+ * reliably timed out on real devices, and holding a corner handle to drag it
+ * triggers accidental haptic-touch. iOS callers go straight to the plain
+ * rectangular cropper instead. Safe to call during SSR (returns false).
+ */
+export function flattenSupported(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    // iPadOS reports as desktop Mac but is the only Mac with a touchscreen.
+    (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
+  return !isIOS;
+}
 
 const WORKER_URL = "/document-scan.worker.js";
 
