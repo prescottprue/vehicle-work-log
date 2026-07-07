@@ -32,7 +32,7 @@ function redirect(location: string): Response {
  * The MCP client (e.g. claude.ai) registered itself via dynamic client
  * registration, so the only trust signal we can show is what it claimed
  * about itself plus the redirect host. Scopes are not granular yet — a
- * grant means "act as you in RigFile".
+ * grant means "act as you in Logbook".
  */
 function consentPage({
   client,
@@ -51,7 +51,7 @@ function consentPage({
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Authorize ${clientName} — RigFile</title>
+<title>Authorize ${clientName} — Logbook</title>
 <style>
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
          background: #0f172a; color: #e2e8f0; font: 16px/1.5 system-ui, sans-serif; }
@@ -70,9 +70,9 @@ function consentPage({
 </head>
 <body>
 <main class="card">
-  <h1>🔧 Connect to RigFile</h1>
+  <h1>🔧 Connect to Logbook</h1>
   <p><span class="who">${clientName}</span> (redirects to <code>${redirectHost}</code>)
-     is asking to access RigFile as <span class="who">${escapeHtml(email)}</span>.</p>
+     is asking to access Logbook as <span class="who">${escapeHtml(email)}</span>.</p>
   <p>It will be able to:</p>
   <ul>
     <li>See your vehicles, logs, reminders, and projects</li>

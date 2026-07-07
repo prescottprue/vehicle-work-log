@@ -50,8 +50,8 @@ export type DriveConnectionStatus = {
   lastSyncedAt: Date | null;
 };
 
-const ROOT_FOLDER_NAME = "RigFile";
-const EXPORT_FILE_NAME = "rigfile-export.json";
+const ROOT_FOLDER_NAME = "Logbook";
+const EXPORT_FILE_NAME = "logbook-export.json";
 /** Refresh the access token a minute before it actually expires. */
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
 
@@ -97,7 +97,7 @@ export async function saveConnectionFromTokens({
     (existing ? await decryptSecret(existing.refreshTokenEnc) : null);
   if (!refreshToken) {
     throw new Error(
-      "Google did not return a refresh token. Remove RigFile from your Google account's third-party access and reconnect.",
+      "Google did not return a refresh token. Remove Logbook from your Google account's third-party access and reconnect.",
     );
   }
 
@@ -185,7 +185,7 @@ type SyncContext = {
 
 /**
  * Push the user's documents, scan/photo attachments, and a JSON data export
- * into a "RigFile" folder in their Google Drive. One-way (app → Drive) and
+ * into a "Logbook" folder in their Google Drive. One-way (app → Drive) and
  * idempotent: immutable blobs already mapped in `drive_synced_files` are
  * skipped, folders are reused, and the export is updated in place.
  *
@@ -349,7 +349,7 @@ async function syncBlob(
   }
 }
 
-/** Write (or refresh) the JSON data export at the RigFile root. */
+/** Write (or refresh) the JSON data export at the Logbook root. */
 async function syncExport(ctx: SyncContext, rootId: string): Promise<void> {
   const data = await buildUserExport(ctx.userId);
   if (!data) return;

@@ -1,6 +1,6 @@
 {
-  "name": "RigFile",
-  "short_name": "RigFile",
+  "name": "Logbook",
+  "short_name": "Logbook",
   "description": "Vehicle maintenance logbook — work logs, reminders, receipt scans, and documents for your rigs.",
   "id": "/",
   "start_url": "/",

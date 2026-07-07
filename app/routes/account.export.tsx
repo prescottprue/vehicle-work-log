@@ -16,7 +16,7 @@ export const Route = createFileRoute("/account/export")({
 
         return Response.json(body, {
           headers: {
-            "content-disposition": `attachment; filename="rigfile-${body.user.email}.json"`,
+            "content-disposition": `attachment; filename="logbook-${body.user.email}.json"`,
           },
         });
       },

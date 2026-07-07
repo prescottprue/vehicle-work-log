@@ -1,4 +1,4 @@
-# CLAUDE.md — RigFile
+# CLAUDE.md — Logbook
 
 Quick reference for Claude Code sessions in this repo. Read `README.md` for
 user-facing context and tool-choice rationale.
@@ -93,7 +93,7 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
   `border-line`, `bg-accent`, `text-danger`/`warn`/`ok` (defined via
   `@theme inline` in `app/styles.css`). Dark mode toggles a `.dark` class on
   `<html>` (palette swap only — no font-size change, so the layout never
-  shifts; `ThemeToggle` in `_authed.tsx` persists `rigfile-theme`, and a
+  shifts; `ThemeToggle` in `_authed.tsx` persists `logbook-theme`, and a
   pre-paint script in `__root.tsx` applies it / falls back to the OS
   `prefers-color-scheme`) — raw slate/red classes won't reskin. The brand
   mark is `app/components/Logo.tsx` (folder + car silhouette, `currentColor`).
@@ -146,7 +146,7 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
    `odometer_readings`: standalone mileage entries (odometer, read_at, note,
    user_id) — "last odometer" is latest-by-date across logs + manual readings,
    ties broken by higher miles;
-   `google_connections`: per-user Google Drive OAuth-client tokens (RigFile is
+   `google_connections`: per-user Google Drive OAuth-client tokens (Logbook is
    the OAuth *client* here, the opposite role from the MCP server) — `drive.file`
    scope only, refresh token AES-GCM encrypted at rest, access token cached;
    `drive_synced_files`: idempotent map of synced source → Drive file/folder id
@@ -244,7 +244,7 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
     same `process.env` path as `SESSION_SECRET`, so no new wrangler binding.
 11. `server.ts` + `app/mcp/` — Worker entry (`main` in wrangler.jsonc):
     wraps the TanStack handler in `workers-oauth-provider`, mounts
-    `RigFileMCP.serve("/mcp")`, and re-exports the `RigFileMCP` Durable
+    `LogbookMCP.serve("/mcp")`, and re-exports the `LogbookMCP` Durable
     Object. `agent.server.ts` defines the MCP tools (`list_vehicles`,
     `get_vehicle_status`, `whats_due`, `log_work`, `complete_reminder`,
     `list_projects`, `add_project_item`, `update_item_status`) as thin
@@ -315,7 +315,7 @@ Remix/Prisma stack in places and are queued for a refresh pass.
   (#59 added `OAUTH_KV`) until the token gained `Workers KV Storage:Edit`.
   Fix lives in the Cloudflare dashboard token, not the repo.
 - **Cloudflare secrets are per-Worker-script; a rename drops them.** When
-  `name` in `wrangler.jsonc` changed (`vehicle-work-log` → `rigfile`), the
+  `name` in `wrangler.jsonc` changed (`vehicle-work-log` → `logbook`), the
   new script started with **no** secrets and the app threw at runtime
   (`SESSION_SECRET must be set and at least 32 characters long`). After any
   Worker rename, re-run `wrangler secret put` for every secret on the new
@@ -351,9 +351,9 @@ including a backlog of paper shop invoices.
   photo still attaches on save.
 - Deliberately NOT the Anthropic API — cost. Don't suggest it for this.
 
-### 2. RigFile MCP server (DONE — see "Files to know" #11)
+### 2. Logbook MCP server (DONE — see "Files to know" #11)
 
-So the crew can talk to RigFile from their own Claude accounts
+So the crew can talk to Logbook from their own Claude accounts
 (claude.ai custom connector, works on mobile). NOTE: rally-specific
 features stay OUT of the app — the app is generic vehicle maintenance;
 rally procedure lives in Scott's external rebelle-rally skill, which

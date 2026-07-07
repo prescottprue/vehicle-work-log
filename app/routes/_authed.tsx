@@ -34,7 +34,7 @@ function ThemeToggle() {
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
     try {
-      localStorage.setItem("rigfile-theme", next ? "dark" : "light");
+      localStorage.setItem("logbook-theme", next ? "dark" : "light");
     } catch {
       // private browsing — theme just won't persist
     }
@@ -96,7 +96,7 @@ function AuthedLayout() {
             >
               <Logo className="h-6 w-6" />
             </span>
-            <span>RigFile</span>
+            <span>Logbook</span>
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />

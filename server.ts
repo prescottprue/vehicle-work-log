@@ -1,7 +1,7 @@
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 
-import { RigFileMCP } from "./app/mcp/agent.server";
+import { LogbookMCP } from "./app/mcp/agent.server";
 import { runWithOAuthHelpers } from "./app/mcp/oauth-context.server";
 
 const app = createServerEntry({
@@ -12,7 +12,7 @@ const app = createServerEntry({
 
 // Durable Object class backing /mcp sessions — wrangler.jsonc binds it as
 // MCP_OBJECT. Must be re-exported from the worker entry.
-export { RigFileMCP };
+export { LogbookMCP };
 
 // The OAuthProvider wraps the whole Worker: it serves the OAuth protocol
 // endpoints itself (/oauth/token, /oauth/register, /.well-known/*), gates
@@ -21,7 +21,7 @@ export { RigFileMCP };
 // renders the login/consent UI inside the TanStack app — to the site.
 export default new OAuthProvider({
   apiRoute: "/mcp",
-  apiHandler: RigFileMCP.serve("/mcp"),
+  apiHandler: LogbookMCP.serve("/mcp"),
   defaultHandler: {
     fetch: (request: Request, env: Cloudflare.Env) =>
       Promise.resolve(

@@ -39,7 +39,7 @@ test.describe("MCP OAuth flow", () => {
     const callbackUrl = `${baseURL}${CALLBACK_PATH}`;
     const registerRes = await request.post("/oauth/register", {
       data: {
-        client_name: "RigFile E2E",
+        client_name: "Logbook E2E",
         redirect_uris: [callbackUrl],
         token_endpoint_auth_method: "none",
       },
@@ -66,7 +66,7 @@ test.describe("MCP OAuth flow", () => {
 
     // 3. Back on /authorize: consent screen, scoped to the logged-in user.
     await page.waitForURL("**/authorize**");
-    await expect(page.getByText("RigFile E2E")).toBeVisible();
+    await expect(page.getByText("Logbook E2E")).toBeVisible();
     await expect(page.getByText(testEmail)).toBeVisible();
     await page.getByRole("button", { name: /approve/i }).click();
 
@@ -105,15 +105,15 @@ test.describe("MCP OAuth flow", () => {
         params: {
           protocolVersion: "2025-03-26",
           capabilities: {},
-          clientInfo: { name: "rigfile-e2e", version: "1.0.0" },
+          clientInfo: { name: "logbook-e2e", version: "1.0.0" },
         },
       },
     });
     expect(initRes.status()).toBe(200);
     const initBody = await initRes.text();
-    expect(initBody).toContain("RigFile");
+    expect(initBody).toContain("Logbook");
 
-    // 7. tools/list on the same MCP session shows the RigFile tool set.
+    // 7. tools/list on the same MCP session shows the Logbook tool set.
     const sessionId = initRes.headers()["mcp-session-id"];
     expect(sessionId).toBeTruthy();
     const toolsRes = await request.post("/mcp", {

@@ -11,7 +11,7 @@ import stylesHref from "../styles.css?url";
 
 // Applied before paint so dark mode doesn't flash light on reload. Falls back
 // to the OS color-scheme preference when the user hasn't picked a theme.
-const themeScript = `try{var t=localStorage.getItem("rigfile-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
+const themeScript = `try{var t=localStorage.getItem("logbook-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -21,12 +21,12 @@ export const Route = createRootRoute({
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { title: "RigFile" },
+      { title: "Logbook" },
       { name: "theme-color", content: "#0c0e11" },
       // iOS home-screen install: standalone chrome + dark status bar. iOS
       // reads these + the apple-touch-icon, not the web manifest.
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "RigFile" },
+      { name: "apple-mobile-web-app-title", content: "Logbook" },
       {
         name: "apple-mobile-web-app-status-bar-style",
         content: "black-translucent",

@@ -37,7 +37,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "github-actions[bot]"
           prompt: |
-            You are a Wrench (builder agent) on the RigFile Pit Lane crew. You've been asked to implement issue #${{ inputs.issue_number }}.
+            You are a Wrench (builder agent) on the Logbook Pit Lane crew. You've been asked to implement issue #${{ inputs.issue_number }}.
 
             Read `SERVICE_WRITER.md` for the full Wrench protocol. Read `CLAUDE.md`, `AGENTS.md`, and `AGENT.md` for code conventions and safety rules. Then follow this workflow:
 
@@ -136,7 +136,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "github-actions[bot]"
           prompt: |
-            You are a Wrench (builder agent) on the RigFile Pit Lane crew. Your job is to pick the next available feature from GitHub Issues and implement it end-to-end.
+            You are a Wrench (builder agent) on the Logbook Pit Lane crew. Your job is to pick the next available feature from GitHub Issues and implement it end-to-end.
 
             Read `SERVICE_WRITER.md` for the full Wrench protocol. Read `CLAUDE.md`, `AGENTS.md`, and `AGENT.md` for code conventions and safety rules. Then follow this workflow:
 

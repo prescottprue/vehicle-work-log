@@ -1,5 +1,5 @@
 /**
- * Google OAuth 2.0 client — the side where RigFile authenticates *to* Google
+ * Google OAuth 2.0 client — the side where Logbook authenticates *to* Google
  * so it can write into the user's Drive. Plain `fetch` against Google's
  * endpoints (no `googleapis` SDK, which isn't Workers-friendly), so this runs
  * unchanged on Cloudflare Workers and Node.
@@ -8,7 +8,7 @@
  * same as SESSION_SECRET): GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET.
  * The redirect URI is derived per-request from the app origin and passed in.
  *
- * Scope is `drive.file` — RigFile can only access files it creates — plus
+ * Scope is `drive.file` — Logbook can only access files it creates — plus
  * `openid email` so we can show which Google account is connected.
  */
 

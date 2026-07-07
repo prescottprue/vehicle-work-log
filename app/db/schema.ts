@@ -391,10 +391,10 @@ export const odometerReadings = pgTable(
   (t) => [index("odometer_readings_vehicle_idx").on(t.vehicleId)],
 );
 
-// Per-user Google Drive connection. Here RigFile is the OAuth *client* (the
-// user authorizes RigFile to write into their Drive) — the opposite role from
-// the MCP server, where RigFile is the OAuth provider. The `drive.file` scope
-// means RigFile can only see and touch files it created itself, never the
+// Per-user Google Drive connection. Here Logbook is the OAuth *client* (the
+// user authorizes Logbook to write into their Drive) — the opposite role from
+// the MCP server, where Logbook is the OAuth provider. The `drive.file` scope
+// means Logbook can only see and touch files it created itself, never the
 // rest of the user's Drive. `refreshTokenEnc` is AES-GCM encrypted at rest
 // (see app/google/crypto.server.ts); the access token is cached until expiry.
 export const googleConnections = pgTable("google_connections", {
@@ -410,7 +410,7 @@ export const googleConnections = pgTable("google_connections", {
     withTimezone: true,
     mode: "date",
   }),
-  // The id of the "RigFile" root folder created in the user's Drive.
+  // The id of the "Logbook" root folder created in the user's Drive.
   rootFolderId: text("root_folder_id"),
   scope: text(),
   lastSyncedAt: timestamp("last_synced_at", {
@@ -420,7 +420,7 @@ export const googleConnections = pgTable("google_connections", {
   ...timestamps,
 });
 
-// Maps a synced source object to the file/folder RigFile created in the user's
+// Maps a synced source object to the file/folder Logbook created in the user's
 // Drive, so re-syncing is idempotent and resumable: an already-synced
 // immutable blob (a vehicle document or log attachment) is skipped, folders
 // are reused, and the JSON export is updated in place. Rows cascade when the

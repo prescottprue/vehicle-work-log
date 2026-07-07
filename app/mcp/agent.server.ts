@@ -23,7 +23,7 @@ import { getVehicle, getVehicleListItems } from "~/models/vehicle.server";
  * workers-oauth-provider on every authenticated /mcp request. Must stay a
  * type alias (not interface) to satisfy McpAgent's Record constraint.
  */
-export type RigFileMcpProps = {
+export type LogbookMcpProps = {
   userId: string;
   email: string;
 };
@@ -79,17 +79,17 @@ function reminderSummary(reminder: ReminderWithStatus) {
 }
 
 /**
- * Remote MCP server for RigFile. Every tool is a thin wrapper over the
+ * Remote MCP server for Logbook. Every tool is a thin wrapper over the
  * app/models layer, which enforces crew-membership authorization — tools
  * only supply the `userId` carried in the OAuth token props, so the MCP
  * surface can never read wider than the logged-in user could in the app.
  */
-export class RigFileMCP extends McpAgent<
+export class LogbookMCP extends McpAgent<
   Cloudflare.Env,
   unknown,
-  RigFileMcpProps
+  LogbookMcpProps
 > {
-  server = new McpServer({ name: "RigFile", version: "1.0.0" });
+  server = new McpServer({ name: "Logbook", version: "1.0.0" });
 
   private requireUserId(): string {
     const userId = this.props?.userId;

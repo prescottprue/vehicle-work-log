@@ -1,5 +1,5 @@
 /**
- * RigFile brand mark — a folder (filing/access) with a simple car silhouette
+ * Logbook brand mark — a folder (filing/access) with a simple car silhouette
  * (the rig). Single-color via `currentColor` so it inherits text color and
  * themes for light/dark; built from primitive shapes so it stays crisp at
  * favicon-to-hero sizes. Size it with a className (e.g. `h-6 w-6`).

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { loginFn } from "~/auth/server-fns";
+import { btnPrimary, card, errorBox, input, label } from "~/components/ui";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -39,42 +40,35 @@ function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-8">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm"
-      >
-        <h1 className="text-2xl font-semibold text-slate-900">Log in</h1>
-        {error ? (
-          <p className="mt-4 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
-        <label className="mt-4 block text-sm font-medium text-slate-700">
+    <main className="flex min-h-screen items-center justify-center bg-surface p-8">
+      <form onSubmit={onSubmit} className={`${card} w-full max-w-md p-8`}>
+        <h1 className="text-2xl font-semibold text-ink">Log in</h1>
+        {error ? <p className={`mt-4 ${errorBox}`}>{error}</p> : null}
+        <label className={`mt-4 ${label}`}>
           Email
           <input
             name="email"
             type="email"
             required
             autoComplete="email"
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className={input}
           />
         </label>
-        <label className="mt-4 block text-sm font-medium text-slate-700">
+        <label className={`mt-4 ${label}`}>
           Password
-          <div className="relative mt-1">
+          <div className="relative">
             <input
               name="password"
               type={showPassword ? "text" : "password"}
               required
               minLength={8}
               autoComplete="current-password"
-              className="w-full rounded border border-slate-300 p-2 pr-16"
+              className={`${input} pr-16`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-700"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-muted hover:text-ink"
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -83,16 +77,16 @@ function LoginPage() {
         <button
           type="submit"
           disabled={pending}
-          className="mt-6 w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          className={`${btnPrimary} mt-6 w-full`}
         >
           {pending ? "Signing in…" : "Sign in"}
         </button>
-        <p className="mt-4 text-center text-sm text-slate-600">
+        <p className="mt-4 text-center text-sm text-ink-muted">
           No account?{" "}
           <Link
             to="/join"
             search={{ redirectTo: undefined }}
-            className="text-blue-600 hover:underline"
+            className="font-medium text-accent hover:underline"
           >
             Sign up
           </Link>

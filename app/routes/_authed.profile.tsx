@@ -4,7 +4,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { requireAuth } from "~/auth/session.server";
 import { ImageCropper } from "~/components/ImageCropper";
-import { btnSecondary, card } from "~/components/ui";
+import {
+  btnPrimary,
+  btnSecondary,
+  card,
+  errorBox,
+  input,
+  label,
+  okBox,
+} from "~/components/ui";
 import { downscaleImage } from "~/lib/image";
 import {
   type DriveConnectionStatus,
@@ -114,15 +122,15 @@ function ProfilePage() {
 
   return (
     <section className="space-y-10">
-      <h1 className="text-2xl font-semibold text-slate-900">Profile</h1>
+      <h1 className="text-2xl font-semibold text-ink">Profile</h1>
       <ProfileForm user={user} />
-      <hr className="border-slate-200" />
+      <hr className="border-line" />
       <PasswordForm />
-      <hr className="border-slate-200" />
+      <hr className="border-line" />
       <ConnectAI />
-      <hr className="border-slate-200" />
+      <hr className="border-line" />
       <GoogleDrive status={drive} />
-      <hr className="border-slate-200" />
+      <hr className="border-line" />
       <YourData />
     </section>
   );
@@ -192,15 +200,13 @@ function GoogleDrive({ status }: { status: DriveConnectionStatus }) {
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-slate-900">
-        ☁️ Sync to Google Drive
-      </h2>
+      <h2 className="text-lg font-medium text-ink">☁️ Sync to Google Drive</h2>
       <div className={`${card} mt-4 max-w-lg p-5`}>
         <p className="text-sm text-ink-muted">
-          Keep a copy of your records in your own Google Drive. RigFile creates
-          a single <span className="font-medium text-ink">RigFile</span> folder
+          Keep a copy of your records in your own Google Drive. Logbook creates
+          a single <span className="font-medium text-ink">Logbook</span> folder
           and copies your vehicle documents, receipt scans, and a full data
-          export into it. Using Google's <code>drive.file</code> access, RigFile
+          export into it. Using Google's <code>drive.file</code> access, Logbook
           can only see files it created here — never the rest of your Drive.
         </p>
 
@@ -232,18 +238,14 @@ function GoogleDrive({ status }: { status: DriveConnectionStatus }) {
                 : "Not synced yet."}
             </p>
 
-            {error ? (
-              <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-                {error}
-              </p>
-            ) : null}
+            {error ? <p className={errorBox}>{error}</p> : null}
             {result ? (
-              <p className="rounded border border-green-200 bg-green-50 p-2 text-sm text-green-700">
+              <p className={okBox}>
                 Synced: {result.created} added, {result.updated} updated,{" "}
                 {result.skipped} already current
                 {result.failed > 0 ? `, ${result.failed} failed` : ""}.
                 {result.errors.length > 0 ? (
-                  <span className="mt-1 block text-xs text-red-700">
+                  <span className="mt-1 block text-xs text-danger">
                     {result.errors.slice(0, 5).join("; ")}
                   </span>
                 ) : null}
@@ -255,7 +257,7 @@ function GoogleDrive({ status }: { status: DriveConnectionStatus }) {
                 type="button"
                 onClick={runSync}
                 disabled={pending !== null}
-                className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                className={btnPrimary}
               >
                 {pending === "sync" ? "Syncing…" : "Sync now"}
               </button>
@@ -270,10 +272,7 @@ function GoogleDrive({ status }: { status: DriveConnectionStatus }) {
             </div>
           </div>
         ) : (
-          <a
-            href="/auth/google/start"
-            className="mt-4 inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
+          <a href="/auth/google/start" className={`${btnPrimary} mt-4`}>
             Connect Google Drive
           </a>
         )}
@@ -303,7 +302,7 @@ function ConnectAI() {
       <h2 className="text-lg font-medium text-ink">🤖 Connect your AI (MCP)</h2>
       <div className={`${card} mt-4 max-w-lg p-5`}>
         <p className="text-sm text-ink-muted">
-          RigFile is an MCP server, so you can talk to your garage from your own
+          Logbook is an MCP server, so you can talk to your garage from your own
           AI assistant — "what's due on the Jeep?", "log the oil change I just
           did at 87,420 miles" — from a phone, mid-wrench. Your AI signs in as{" "}
           <em>you</em>: it can only see and log to vehicles your account can
@@ -318,7 +317,7 @@ function ConnectAI() {
             )
           </li>
           <li>Paste the URL below</li>
-          <li>Sign in with your RigFile account and approve access</li>
+          <li>Sign in with your Logbook account and approve access</li>
         </ol>
         <div className="mt-4 flex gap-2">
           <input
@@ -346,14 +345,14 @@ function ConnectAI() {
 function YourData() {
   return (
     <div>
-      <h2 className="text-lg font-medium text-slate-900">🔓 Your data</h2>
+      <h2 className="text-lg font-medium text-ink">🔓 Your data</h2>
       <div className={`${card} mt-4 max-w-lg p-5`}>
         <p className="text-sm text-ink-muted">
           Your records belong to you. Download your complete history — vehicles,
           logs, readings, vendors, tags, and parts — as JSON at any time.
-          RigFile is also{" "}
+          Logbook is also{" "}
           <a
-            href="https://github.com/prescottprue/rigfile"
+            href="https://github.com/prescottprue/logbook"
             target="_blank"
             rel="noreferrer"
             className="font-medium text-accent hover:underline"
@@ -427,24 +426,13 @@ function ProfileForm({
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-slate-900">Account details</h2>
+      <h2 className="text-lg font-medium text-ink">Account details</h2>
       <form onSubmit={onSubmit} className="mt-4 max-w-lg space-y-4">
-        {error ? (
-          <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
-        {success ? (
-          <p className="rounded border border-green-200 bg-green-50 p-2 text-sm text-green-700">
-            Profile updated.
-          </p>
-        ) : null}
+        {error ? <p className={errorBox}>{error}</p> : null}
+        {success ? <p className={okBox}>Profile updated.</p> : null}
 
         <div>
-          <label
-            htmlFor="profile-email"
-            className="block text-sm font-medium text-slate-700"
-          >
+          <label htmlFor="profile-email" className={label}>
             Email
           </label>
           <input
@@ -452,25 +440,25 @@ function ProfileForm({
             type="email"
             value={user.email}
             disabled
-            className="mt-1 w-full rounded border border-slate-200 bg-slate-50 p-2 text-slate-500"
+            className={`${input} bg-sunken text-ink-muted`}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-muted">
             Email cannot be changed at this time.
           </p>
         </div>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className={label}>
           Display name
           <input
             name="displayName"
             type="text"
             defaultValue={user.displayName ?? ""}
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className={input}
           />
         </label>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={label}>
             Profile image (cropped to a square)
             <input
               type="file"
@@ -506,11 +494,7 @@ function ProfileForm({
           />
         ) : null}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className={btnPrimary}>
           {pending ? "Saving…" : "Save changes"}
         </button>
       </form>
@@ -557,56 +541,46 @@ function PasswordForm() {
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-slate-900">Change password</h2>
+      <h2 className="text-lg font-medium text-ink">Change password</h2>
       <form onSubmit={onSubmit} className="mt-4 max-w-lg space-y-4">
-        {error ? (
-          <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
+        {error ? <p className={errorBox}>{error}</p> : null}
         {success ? (
-          <p className="rounded border border-green-200 bg-green-50 p-2 text-sm text-green-700">
-            Password changed successfully.
-          </p>
+          <p className={okBox}>Password changed successfully.</p>
         ) : null}
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className={label}>
           Current password
           <input
             name="currentPassword"
             type="password"
             required
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className={input}
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className={label}>
           New password
           <input
             name="newPassword"
             type="password"
             required
             minLength={8}
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className={input}
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className={label}>
           Confirm new password
           <input
             name="confirmPassword"
             type="password"
             required
             minLength={8}
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className={input}
           />
         </label>
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className={btnPrimary}>
           {pending ? "Changing…" : "Change password"}
         </button>
       </form>

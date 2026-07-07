@@ -1,5 +1,5 @@
 {
-  "name": "rigfile",
+  "name": "logbook",
   "private": true,
   "type": "module",
   "engines": {
@@ -28,7 +28,7 @@
     "scan:extract": "node --import tsx scripts/scan-bay/scan.ts",
     "scan:import": "node --env-file=.env --import tsx scripts/scan-bay/import.ts",
     "docker:dev": "docker compose up -d",
-    "docker:build": "docker build -t rigfile:local .",
+    "docker:build": "docker build -t logbook:local .",
     "validate": "npm run typecheck && npm run lint && npm run test -- --run"
   },
   "dependencies": {

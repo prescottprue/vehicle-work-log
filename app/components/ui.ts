@@ -25,6 +25,9 @@ export const label = "block text-sm font-medium text-ink-muted";
 export const errorBox =
   "rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger";
 
+export const okBox =
+  "rounded-xl border border-ok/40 bg-ok/10 p-3 text-sm text-ok";
+
 /** Selectable pill (service-type presets, status filters). */
 export function chip(selected: boolean) {
   return `inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors ${

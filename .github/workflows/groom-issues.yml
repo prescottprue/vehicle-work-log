@@ -32,7 +32,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: "true"
           prompt: |
-            You are the RigFile Service Writer. Groom issue #${{ github.event.issue.number }}.
+            You are the Logbook Service Writer. Groom issue #${{ github.event.issue.number }}.
 
             Start by reading these files (use a single bash command: `cat SERVICE_WRITER.md AGENTS.md CLAUDE.md`), then read the issue with `gh issue view ${{ github.event.issue.number }} -R ${{ github.repository }}`.
 
@@ -47,7 +47,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are the RigFile Service Writer. Groom issue #${{ inputs.issue_number }}.
+            You are the Logbook Service Writer. Groom issue #${{ inputs.issue_number }}.
 
             Start by reading these files (use a single bash command: `cat SERVICE_WRITER.md AGENTS.md CLAUDE.md`), then read the issue with `gh issue view ${{ inputs.issue_number }} -R ${{ github.repository }}`.
 
@@ -62,7 +62,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are the RigFile Service Writer. Groom all ungroomed issues.
+            You are the Logbook Service Writer. Groom all ungroomed issues.
 
             Start by reading these files (use a single bash command: `cat SERVICE_WRITER.md AGENTS.md CLAUDE.md`).
 
@@ -95,7 +95,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are the RigFile Service Writer. A human has responded to clarification questions on issue #${{ github.event.issue.number }}.
+            You are the Logbook Service Writer. A human has responded to clarification questions on issue #${{ github.event.issue.number }}.
 
             Start by reading context files (`cat SERVICE_WRITER.md AGENTS.md CLAUDE.md`) and the full issue with comments (`gh issue view ${{ github.event.issue.number }} -R ${{ github.repository }} --comments`).
 
@@ -128,7 +128,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are the RigFile Service Writer. A `/groom` command was issued on issue #${{ github.event.issue.number }}. This is a (re-)groom — start fresh.
+            You are the Logbook Service Writer. A `/groom` command was issued on issue #${{ github.event.issue.number }}. This is a (re-)groom — start fresh.
 
             First, strip stale status labels in one command:
             ```bash

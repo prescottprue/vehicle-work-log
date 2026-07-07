@@ -5,7 +5,7 @@
  * both Cloudflare Workers and Node.
  *
  * Everything here is scoped by the `drive.file` grant: these calls only ever
- * see or touch files RigFile itself created.
+ * see or touch files Logbook itself created.
  */
 
 const FILES_ENDPOINT = "https://www.googleapis.com/drive/v3/files";
@@ -58,7 +58,7 @@ export async function uploadFile({
   body: Uint8Array;
   parentId?: string;
 }): Promise<string> {
-  const boundary = `rigfile-${crypto.randomUUID()}`;
+  const boundary = `logbook-${crypto.randomUUID()}`;
   const metadata = JSON.stringify({
     name,
     ...(parentId ? { parents: [parentId] } : {}),

@@ -1,7 +1,7 @@
 # Self-host image: app + Postgres 16 + s6-overlay, one mounted /app/data volume.
 # Run with:
-#   docker run -d -p 3000:3000 -v rigfile-data:/app/data \
-#     -e SESSION_SECRET=... ghcr.io/scottprue/rigfile:latest
+#   docker run -d -p 3000:3000 -v logbook-data:/app/data \
+#     -e SESSION_SECRET=... ghcr.io/scottprue/logbook:latest
 
 ARG NODE_VERSION=24
 ARG S6_OVERLAY_VERSION=3.2.0.2
@@ -25,7 +25,7 @@ ARG S6_OVERLAY_VERSION
 ENV NODE_ENV=production
 ENV PGDATA=/app/data/postgresql
 ENV UPLOADS_DIR=/app/data/uploads
-ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rigfile
+ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/logbook
 
 # Install Node and fetch tools
 RUN apk add --no-cache \

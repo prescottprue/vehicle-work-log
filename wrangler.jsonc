@@ -1,16 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "rigfile",
+  "name": "logbook",
   "compatibility_date": "2026-01-15",
   "compatibility_flags": ["nodejs_compat"],
   // Custom entry: wraps the TanStack Start handler in workers-oauth-provider
-  // and exports the RigFileMCP Durable Object (see server.ts).
+  // and exports the LogbookMCP Durable Object (see server.ts).
   "main": "./server.ts",
   "observability": {
     "enabled": true
   },
   // Hyperdrive pools TCP Postgres connections from Workers. Create with:
-  //   wrangler hyperdrive create rigfile-db --connection-string="$NEON_URL"
+  //   wrangler hyperdrive create logbook-db --connection-string="$NEON_URL"
   // Then paste the returned id below.
   "hyperdrive": [
     {
@@ -19,15 +19,15 @@
       "id": "d0a95e6693424f2e9f3e9bb7f1af4b19",
       // In dev, wrangler/miniflare routes Hyperdrive requests to this URL so
       // the local Postgres from `npm run docker:dev` stands in for Neon.
-      "localConnectionString": "postgresql://postgres:postgres@localhost:5440/rigfile"
+      "localConnectionString": "postgresql://postgres:postgres@localhost:5440/logbook"
     }
   ],
   // R2 bucket holds avatar uploads. Create with:
-  //   wrangler r2 bucket create rigfile-uploads
+  //   wrangler r2 bucket create logbook-uploads
   "r2_buckets": [
     {
       // REPLACE WITH YOUR R2_BUCKET NAME FROM CLOUDFLARE
-      "bucket_name": "rigfile-prod-uploads",
+      "bucket_name": "logbook-prod-uploads",
       "binding": "UPLOADS"
     }
   ],
@@ -48,7 +48,7 @@
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",
-      "id": "15912863509549d2b3c133efe58db783"
+      "id": "7813b95e047d40fca5839eefec8cccc4"
     }
   ],
   // Durable Object backing MCP sessions at /mcp (agents SDK McpAgent).
@@ -56,14 +56,14 @@
     "bindings": [
       {
         "name": "MCP_OBJECT",
-        "class_name": "RigFileMCP"
+        "class_name": "LogbookMCP"
       }
     ]
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["RigFileMCP"]
+      "new_sqlite_classes": ["LogbookMCP"]
     }
   ]
   // SESSION_SECRET is a Wrangler secret. Set with:
