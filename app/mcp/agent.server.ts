@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpAgent } from "agents/mcp";
 import { z } from "zod";
 
+import { semanticSearch, syncEmbeddings } from "~/models/embedding.server";
 import { createLog, getLogListItems } from "~/models/log.server";
 import { getLatestOdometer } from "~/models/odometer.server";
 import {
@@ -213,6 +214,42 @@ export class LogbookMCP extends McpAgent<
             }
           }
           return due;
+        }),
+    );
+
+    this.server.tool(
+      "search_history",
+      "Semantic + keyword search across every maintenance log and vehicle document the user can access. Ask in natural language ('last coolant flush', 'brake pad brand') — returns the matching entries with snippets; synthesize the answer from them yourself and reference the entries you used.",
+      {
+        query: z.string().describe("Natural-language search query"),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .max(20)
+          .optional()
+          .describe("Max results (default 8)"),
+      },
+      async ({ query, limit }) =>
+        run(async () => {
+          const userId = this.requireUserId();
+          // Lazily heal the semantic index before searching (bounded batch;
+          // anything left is picked up by later calls).
+          await syncEmbeddings({ userId, limit: 32 });
+          const sources = await semanticSearch({
+            userId,
+            query,
+            limit: limit ?? 8,
+          });
+          return sources.map((s) => ({
+            type: s.sourceType,
+            id: s.sourceId,
+            vehicleId: s.vehicleId,
+            vehicleName: s.vehicleName,
+            title: s.title,
+            date: s.date?.toISOString() ?? null,
+            snippet: s.snippet,
+          }));
         }),
     );
 

@@ -12,6 +12,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  vector,
 } from "drizzle-orm/pg-core";
 
 const cuid2 = () => text().$defaultFn(() => createId());
@@ -322,6 +323,51 @@ export const vehicleDocuments = pgTable(
   ],
 );
 
+// Semantic-search index over logs and vehicle documents ("Ask your Logbook").
+// One row per source; `content` is the exact text that was embedded (also the
+// snippet shown in results) and `model` records which embedding backend
+// produced the vector — rows from a different model than the active backend
+// are treated as stale and lazily re-embedded (see models/embedding.server).
+// Exactly one of logId/documentId is set; each cascades with its source row.
+export const embeddings = pgTable(
+  "embeddings",
+  {
+    id: cuid2().primaryKey(),
+    vehicleId: text("vehicle_id")
+      .notNull()
+      .references(() => vehicles.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    logId: text("log_id").references(() => logs.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    documentId: text("document_id").references(() => vehicleDocuments.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    content: text().notNull(),
+    model: text().notNull(),
+    // 768 dims: both default backends (Workers AI bge-base-en-v1.5, Ollama
+    // nomic-embed-text) emit 768-dim vectors. A model override with different
+    // dimensions is rejected at backend-probe time (see ai/embeddings.server).
+    embedding: vector({ dimensions: 768 }).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    // Postgres unique indexes allow repeated NULLs, so these enforce
+    // one-embedding-per-source without colliding across source types.
+    uniqueIndex("embeddings_log_idx").on(t.logId),
+    uniqueIndex("embeddings_document_idx").on(t.documentId),
+    index("embeddings_vehicle_idx").on(t.vehicleId),
+    index("embeddings_vector_idx").using(
+      "hnsw",
+      t.embedding.op("vector_cosine_ops"),
+    ),
+  ],
+);
+
 export const tags = pgTable(
   "tags",
   {
@@ -479,3 +525,5 @@ export type GoogleConnection = typeof googleConnections.$inferSelect;
 export type NewGoogleConnection = typeof googleConnections.$inferInsert;
 export type DriveSyncedFile = typeof driveSyncedFiles.$inferSelect;
 export type NewDriveSyncedFile = typeof driveSyncedFiles.$inferInsert;
+export type Embedding = typeof embeddings.$inferSelect;
+export type NewEmbedding = typeof embeddings.$inferInsert;

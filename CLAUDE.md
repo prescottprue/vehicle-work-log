@@ -150,7 +150,11 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
    the OAuth *client* here, the opposite role from the MCP server) — `drive.file`
    scope only, refresh token AES-GCM encrypted at rest, access token cached;
    `drive_synced_files`: idempotent map of synced source → Drive file/folder id
-   so re-syncing skips already-uploaded blobs and reuses folders)
+   so re-syncing skips already-uploaded blobs and reuses folders;
+   `embeddings`: pgvector semantic index over logs + vehicle documents for
+   "Ask your Logbook" — one row per source (`vector(768)`, HNSW cosine index),
+   `model` column records the embedding backend so a backend swap lazily
+   re-indexes; no write hooks, the index heals on read via `syncEmbeddings`)
 2. `app/db/client.ts` — postgres-js client, runtime-aware
 3. `app/db/migrations/` — generated SQL (do not edit by hand unless
    adding CREATE EXTENSION-style ops that Drizzle can't infer)
@@ -178,6 +182,11 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
    create and edit routes),
    `export.server.ts` (`buildUserExport` — the full "your data" JSON bundle,
    shared by the `/account/export` download and the Drive sync),
+   `embedding.server.ts` (Ask your Logbook — `syncEmbeddings` lazily
+   (re-)embeds missing/stale/model-mismatched logs + documents for the user's
+   vehicles; `semanticSearch` fuses the pgvector cosine leg with the two FTS
+   legs via reciprocal-rank fusion, membership-scoped; degrades to
+   keyword-only when no embedding backend is reachable),
    `google-drive.server.ts` (one-way app → Drive sync: connection CRUD with
    token refresh/caching, `syncToDrive` over owned vehicles' documents + log
    attachments + the JSON export, idempotent via `drive_synced_files`)
@@ -213,6 +222,16 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
    Cloudflare Worker upload even though it only runs in the browser — the
    static assets keep the Worker lean (~700KB gzip) and edge-cache after
    first download.
+8b. `app/ai/` — Ask your Logbook runtime seam (server-only):
+   `workers-ai.server.ts` (shared `AI`-binding resolver + response-text
+   helper), `embeddings.server.ts` (`getEmbeddingBackend` — Workers AI
+   bge-base-en-v1.5 on CF, Ollama nomic-embed-text on Node/dev, both 768-dim;
+   probe-verified and cached per isolate, `EMBEDDING_MODEL` overrides),
+   `answer.server.ts` (`generateAnswer` — grounded, citation-forcing prompt
+   over retrieved sources; Workers AI llama-4-scout / Ollama qwen3-vl:8b,
+   `ASK_MODEL` overrides; returns null instead of throwing so the ask page
+   can still show sources). Kept separate from `app/scan/` so the two AI
+   features don't share module graphs.
 9. `app/scan/` — Scan Bay. `receipt.ts` is the isomorphic extraction
    contract (JSON schema + prompt + `normalizeReceipt`/`receiptToNotes`);
    `extract.server.ts` is the runtime seam (Workers AI binding on CF,
@@ -224,6 +243,10 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
 10. `app/routes/*` — file-based routes, including `/files/$` streaming
     route, `/account/export` JSON bundle endpoint,
     `_authed.vehicles.$vehicleId.scan.tsx` (in-app receipt scan),
+    `_authed.ask.tsx` ("Ask your Logbook" — header nav entry; lazily indexes
+    on ask (bounded batches), hybrid-searches, and renders the answer with
+    `[n]` citations linkified to their log/document sources; degrades to
+    keyword-only results when no AI backend is reachable),
     `_authed.vehicles.$vehicleId.odometer.tsx` (current reading + source +
     quick-add form + history with author-or-owner delete),
     `_authed.vehicles.$vehicleId.edit.tsx` (owner-only vehicle edit:
@@ -253,7 +276,8 @@ npm run test:e2e        # playwright smoke tests (needs dev server + DB)
     wraps the TanStack handler in `workers-oauth-provider`, mounts
     `LogbookMCP.serve("/mcp")`, and re-exports the `LogbookMCP` Durable
     Object. `agent.server.ts` defines the MCP tools (`list_vehicles`,
-    `get_vehicle_status`, `whats_due`, `log_work`, `complete_reminder`,
+    `get_vehicle_status`, `whats_due`, `search_history`, `log_work`,
+    `complete_reminder`,
     `list_projects`, `add_project_item`, `update_item_status`) as thin
     wrappers over `app/models/*` using the OAuth token's `userId`;
     `oauth-context.server.ts` is the AsyncLocalStorage bridge that gets
@@ -379,6 +403,17 @@ calls these MCP tools:
 - A rally-prep skill (Rebelle Rally — Scott has a draft) layers event
   procedure on top and calls these tools; keep event-specific content in
   the skill, generic data access in MCP.
+
+### 3. Ask your Logbook (DONE — see "Files to know" #8b, models #7, route #10)
+
+Semantic search + Q&A over all logs and vehicle documents: pgvector
+`embeddings` table (768-dim, HNSW), lazily self-healing index (no write
+hooks — `syncEmbeddings` runs before each search), hybrid retrieval
+(vector + both FTS indexes, RRF-fused), grounded answers with `[n]`
+citations that link back to sources. `/ask` page in the header nav +
+`search_history` MCP tool. Same $0 AI policy: Workers AI on CF
+(bge-base-en-v1.5 + llama-4-scout), local Ollama on Node/dev
+(nomic-embed-text + qwen3-vl:8b) — do NOT suggest paid APIs for this.
 
 ## Documentation policy
 

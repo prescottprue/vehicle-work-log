@@ -13,6 +13,13 @@ What it does today:
 
 - **Work logs** — quick-capture form with tap-to-fill presets (oil change,
   brake pads, …), odometer/cost, and full-text search.
+- **Ask your Logbook** — ask questions in plain English ("when was the last
+  oil change?", "what brand of brake pads did we install?") and get an
+  answer grounded in your own logs and documents, with citations that link
+  back to the exact entry. Semantic search (pgvector embeddings) fused with
+  keyword search, so it finds "coolant flush" when you ask about
+  "antifreeze". Runs on the same $0 AI setup as scanning: Workers AI on
+  Cloudflare, your local Ollama when self-hosting.
 - **Odometer tracking** — standalone mileage entries (date + miles + optional
   note) supplement work-log odometer readings. The dashboard chip shows the
   latest reading with its date; the odometer page lists the full history with
@@ -470,6 +477,31 @@ Dev note: Workers AI has no local simulator, so the binding is dev-disabled
 unless you opt in with `CF_REMOTE_BINDINGS=1 npm run dev` (requires
 `wrangler login`); without it, dev scans use local Ollama.
 
+## Ask your Logbook — questions, answered from your records
+
+The **Ask** page (header, magnifier icon) answers natural-language questions
+from your own service history and documents. Every log and OCR'd document is
+embedded into a pgvector index (768-dim, HNSW); a question runs hybrid
+retrieval — vector similarity fused with the two Postgres full-text indexes
+via reciprocal-rank fusion — and a small LLM writes a short answer citing its
+sources as `[1]`, `[2]`, each linking back to the log or document it used.
+
+Design choices worth knowing:
+
+- **The index maintains itself.** There are no hooks on writes — before each
+  search, entries that are new, edited, or embedded by a different model are
+  (re-)embedded in bounded batches. Swap embedding models and the index
+  quietly rebuilds as you use it.
+- **Same $0 AI policy as Scan Bay.** Cloudflare runs Workers AI
+  (`bge-base-en-v1.5` embeddings, `llama-4-scout` answers); self-host/dev
+  uses local Ollama (`nomic-embed-text` + `qwen3-vl:8b` — `ollama pull
+  nomic-embed-text` once). `EMBEDDING_MODEL` / `ASK_MODEL` override either.
+- **Graceful degrade.** No AI backend reachable? The page still returns
+  keyword matches; answers just aren't synthesized. No answer is ever
+  produced without sources.
+- **Crew-scoped.** Retrieval joins `vehicle_members` like every other query —
+  you can only ask about vehicles you can already see.
+
 ## Logbook MCP — talk to your garage from Claude
 
 The Worker doubles as a remote MCP server at `/mcp`, so anyone on the crew
@@ -487,8 +519,9 @@ existing `users` table. The granted token carries only `userId`, and every
 tool is a thin wrapper over `app/models/*` — so crew-membership
 authorization applies to MCP exactly as it does in the app.
 
-Tools: `list_vehicles`, `get_vehicle_status`, `whats_due`, `log_work`,
-`complete_reminder`, `list_projects`, `add_project_item`,
+Tools: `list_vehicles`, `get_vehicle_status`, `whats_due`, `search_history`
+(the same hybrid semantic + keyword search that powers the in-app Ask page),
+`log_work`, `complete_reminder`, `list_projects`, `add_project_item`,
 `update_item_status`.
 
 The MCP server runs on Cloudflare only (it needs Durable Objects +
